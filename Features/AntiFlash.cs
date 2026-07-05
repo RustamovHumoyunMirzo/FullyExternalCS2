@@ -50,7 +50,7 @@ public sealed class AntiFlash : ThreadedServiceBase
         if (flashDuration > 0f)
         {
             var zeroBytes = BitConverter.GetBytes(0f);
-            Kernel32.WriteProcessMemory(hProcess, flashAddress, zeroBytes, zeroBytes.Length, out _);
+            Kernel32.WriteMemory(hProcess, flashAddress, zeroBytes);
 
             Console.WriteLine($"[AntiFlash] Flash blocked! ({flashDuration:F2}s duration prevented)");
         }

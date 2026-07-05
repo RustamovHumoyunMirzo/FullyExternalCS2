@@ -333,9 +333,10 @@ public static class Utility
         var handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
         try
         {
-            Kernel32.ReadProcessMemory(hProcess, lpBaseAddress, handle.AddrOfPinnedObject(), size,
-                out var lpNumberOfBytesRead);
-            if (lpNumberOfBytesRead == size) return Marshal.PtrToStructure<T>(handle.AddrOfPinnedObject());
+            if (Kernel32.ReadMemory(hProcess, lpBaseAddress, handle.AddrOfPinnedObject(), size))
+            {
+                return Marshal.PtrToStructure<T>(handle.AddrOfPinnedObject());
+            }
         }
         finally
         {
@@ -360,7 +361,7 @@ public static class Utility
         var handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
         try
         {
-            Kernel32.ReadProcessMemory(hProcess, lpBaseAddress, handle.AddrOfPinnedObject(), maxLength, out _);
+            Kernel32.ReadMemory(hProcess, lpBaseAddress, handle.AddrOfPinnedObject(), maxLength);
         }
         finally
         {
