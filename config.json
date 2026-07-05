@@ -1,0 +1,28 @@
+{
+  "EspBox": true,
+  "EspName": true,
+  "EspWeapon": true,
+  "EspFlags": true,
+  "EspBoxColor": [
+    1,
+    0,
+    0,
+    1
+  ],
+  "SkeletonEsp": true,
+  "EspAimCrosshair": false,
+  "BombTimer": true,
+  "VoteTeller": true,
+  "TeamCheck": false,
+  "AimBot": false,
+  "AimFovCircle": false,
+  "AimFov": 5.3,
+  "AimSmoothing": 2.2,
+  "AimBoneIndex": 0,
+  "AimRcs": false,
+  "AimRcsStrength": 100,
+  "TriggerBot": false,
+  "AimBotKey": "RButton",
+  "TriggerBotKey": "P",
+  "MenuToggleKey": "Insert"
+}

@@ -33,6 +33,7 @@ public class ConfigManager
     public float AimRcsStrength { get; set; }
 
     public bool TriggerBot { get; set; }
+    public bool AntiFlash { get; set; }
 
     [JsonConverter(typeof(KeysJsonConverter))]
     public Keys AimBotKey { get; set; }
@@ -194,6 +195,7 @@ public class ConfigManager
             EspBoxColor = new float[] { 1f, 0f, 0f, 1f },
             SkeletonEsp = false,
             TriggerBot = true,
+            AntiFlash = false,
             AimBotKey = Keys.LButton,
             TriggerBotKey = Keys.LMenu,
             MenuToggleKey = Keys.Insert,
