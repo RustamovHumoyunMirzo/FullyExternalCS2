@@ -21,16 +21,24 @@ public sealed class AntiFlash : ThreadedServiceBase
     protected override void FrameAction()
     {
         if (!_gameProcess.IsValid || !_gameProcess.IsGameForeground)
+        {
             return;
+        }
 
         if (!ConfigManager.Load().AntiFlash)
+        {
             return;
+        }
 
         if (_gameData.Player == null || _gameData.Player.AddressBase == IntPtr.Zero)
+        {
             return;
+        }
 
         if (_gameProcess.Process == null)
+        {
             return;
+        }
 
         var hProcess = _gameProcess.Process.Handle;
         var flashAddress = _gameData.Player.AddressBase + Offsets.m_flFlashDuration;

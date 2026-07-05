@@ -248,7 +248,10 @@ public class OverlayRenderer : Overlay
         DrawKeyBind("Trigger Key", "TriggerBotKey", _config.TriggerBotKey);
 
         var antiFlash = _config.AntiFlash;
-        if (Toggle("Anti-Flash", ref antiFlash)) _config.AntiFlash = antiFlash;
+        if (Toggle("Anti-Flash", ref antiFlash))
+        {
+            _config.AntiFlash = antiFlash;
+        }
 
         ImGui.Spacing();
         SectionHeader("General");

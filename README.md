@@ -21,6 +21,7 @@ The main focus of this version is the new in-game menu: most features no longer 
 - Selectable aimbot target bone
 - Bomb Timer update
 - New Vote Teller feature
+- New Anti-Flash feature
 - Auto-loaded offsets from cs2-dumper
 
 ## Menu
@@ -56,6 +57,7 @@ Default menu key: `Insert`
 
 - TriggerBot
 - TriggerBot keybind
+- Anti-Flash
 - Team Check
 - Menu keybind
 
@@ -103,6 +105,13 @@ Default aim key: `LButton`
 - Bomb Timer
 - Vote Teller
 - Aim Crosshair
+
+### Anti-Flash
+
+- Automatically blocks flashbang effects
+- Resets flash duration to zero immediately
+- Toggleable from the Misc tab
+- No keybind required (always runs when enabled)
 
 ### TriggerBot
 
