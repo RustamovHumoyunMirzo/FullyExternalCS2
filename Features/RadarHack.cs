@@ -20,16 +20,31 @@ public sealed class RadarHack : ThreadedServiceBase
 
     protected override void FrameAction()
     {
-        if (!ConfigManager.Load().RadarHack) return;
-        if (!_gameProcess.IsValid || _gameProcess.Process == null) return;
-        if (_gameData.Entities == null || _gameData.Player == null) return;
+        if (!ConfigManager.Load().RadarHack)
+        {
+            return;
+        }
+        if (!_gameProcess.IsValid || _gameProcess.Process == null)
+        {
+            return;
+        }
+        if (_gameData.Entities == null || _gameData.Player == null)
+        {
+            return;
+        }
 
         var localTeam = _gameData.Player.Team;
 
         foreach (var entity in _gameData.Entities)
         {
-            if (!entity.IsAlive()) continue;
-            if (entity.Team == localTeam) continue;
+            if (!entity.IsAlive())
+            {
+                continue;
+            }
+            if (entity.Team == localTeam)
+            {
+                continue;
+            }
 
             // Write m_bSpotted = true to force enemy on radar
             var spottedAddress = entity.AddressBase + Offsets.m_entitySpottedState + 0x8;
