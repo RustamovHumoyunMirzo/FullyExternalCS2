@@ -22,7 +22,6 @@ internal class BombTimer : ThreadedServiceBase
     private float _currentTime;
     private IntPtr _globalVars;
     private IntPtr _plantedC4;
-    private IntPtr _tempC4;
 
     public BombTimer(GameProcess gameProcess)
     {
@@ -36,11 +35,17 @@ internal class BombTimer : ThreadedServiceBase
         _globalVars = _gameProcess.ModuleClient.Read<IntPtr>(Offsets.dwGlobalVars);
         _currentTime = _gameProcess.Process.Read<float>(_globalVars + 0x30);
 
-        _tempC4 = _gameProcess.ModuleClient.Read<IntPtr>(Offsets.dwPlantedC4);
-        _plantedC4 = _gameProcess.Process.Read<IntPtr>(_tempC4);
-        _isBombPlanted = _gameProcess.ModuleClient.Read<bool>(Offsets.dwPlantedC4 - 0x8);
+        _plantedC4 = _gameProcess.ModuleClient.Read<IntPtr>(Offsets.dwPlantedC4);
 
-        if (!_isBombPlanted || _plantedC4 == IntPtr.Zero)
+        if (_plantedC4 == IntPtr.Zero)
+        {
+            ResetBombState();
+            return;
+        }
+
+        _isBombPlanted = _gameProcess.Process.Read<bool>(_plantedC4 + Offsets.m_bBombTicking);
+
+        if (!_isBombPlanted)
         {
             ResetBombState();
             return;
