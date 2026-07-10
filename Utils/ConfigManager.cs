@@ -33,6 +33,7 @@ public class ConfigManager
     public float AimRcsStrength { get; set; }
 
     public bool TriggerBot { get; set; }
+    public bool RadarHack { get; set; }
 
     [JsonConverter(typeof(KeysJsonConverter))]
     public Keys AimBotKey { get; set; }
@@ -234,6 +235,7 @@ public class ConfigManager
             EspBoxColor = new float[] { 1f, 0f, 0f, 1f },
             SkeletonEsp = false,
             TriggerBot = true,
+            RadarHack = true,
             AimBotKey = Keys.LButton,
             AimRcsKey = Keys.LButton,
             TriggerBotKey = Keys.LMenu,
