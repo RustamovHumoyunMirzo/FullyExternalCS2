@@ -18,10 +18,20 @@ public class Program
         var gameProcess = new GameProcess();
         gameProcess.Start();
 
+        var lastStatus = string.Empty;
         while (!gameProcess.IsValid || gameProcess.WindowRectangleClient.Width <= 0)
         {
             Thread.Sleep(500);
-            Console.Write(".");
+            if (!string.Equals(lastStatus, gameProcess.Status, StringComparison.Ordinal))
+            {
+                lastStatus = gameProcess.Status;
+                Console.WriteLine();
+                Console.WriteLine($"[INFO] {lastStatus}");
+            }
+            else
+            {
+                Console.Write(".");
+            }
         }
 
         Console.WriteLine();

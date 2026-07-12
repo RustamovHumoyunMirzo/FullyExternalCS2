@@ -31,6 +31,8 @@ public class GameProcess : ThreadedServiceBase
 
     public Rectangle WindowRectangleClient { get; private set; }
 
+    public string Status { get; private set; } = "Waiting for process.";
+
     private bool WindowActive { get; set; }
 
     public bool IsValid => WindowHwnd != IntPtr.Zero &&
@@ -78,8 +80,20 @@ public class GameProcess : ThreadedServiceBase
 
     private bool EnsureProcessAndModules()
     {
-        Process ??= System.Diagnostics.Process.GetProcessesByName(NameProcess).FirstOrDefault()!;
-        if (Process == null || Process.HasExited) return false;
+        Process ??= System.Diagnostics.Process.GetProcessesByName(NameProcess)
+            .OrderByDescending(process => process.MainWindowHandle != IntPtr.Zero)
+            .FirstOrDefault()!;
+        if (Process == null)
+        {
+            Status = $"Waiting for '{NameProcess}.exe'.";
+            return false;
+        }
+
+        if (Process.HasExited)
+        {
+            Status = $"'{NameProcess}.exe' exited.";
+            return false;
+        }
 
         if (ModuleClient == null && Process != null)
         {
@@ -92,11 +106,18 @@ public class GameProcess : ThreadedServiceBase
             }
             catch (Win32Exception ex) when (ex.NativeErrorCode == 5)
             {
+                Status = $"Access denied while reading '{NameModule}'. Run this app as Administrator if CS2 is elevated.";
                 return false;
             }
 
             if (processModule != null)
+            {
                 ModuleClient = new Module(Process, processModule);
+            }
+            else
+            {
+                Status = $"Waiting for '{NameModule}' in '{NameProcess}.exe'.";
+            }
         }
 
         return ModuleClient != null;
@@ -106,8 +127,14 @@ public class GameProcess : ThreadedServiceBase
     private void EnsureWindow()
     {
         var hwnd = User32.FindWindow(null!, NameWindow);
+        if (hwnd == IntPtr.Zero && Process is { HasExited: false })
+        {
+            hwnd = Process.MainWindowHandle;
+        }
+
         if (hwnd == IntPtr.Zero)
         {
+            Status = $"Waiting for '{NameWindow}' window.";
             InvalidateWindow();
             return;
         }
@@ -117,6 +144,14 @@ public class GameProcess : ThreadedServiceBase
         if (rect.Width > 0 && rect.Height > 0)
         {
             WindowRectangleClient = rect;
+            if (ModuleClient != null)
+            {
+                Status = "Ready.";
+            }
+        }
+        else
+        {
+            Status = "Waiting for CS2 client area.";
         }
 
         WindowActive = hwnd == User32.GetForegroundWindow();
