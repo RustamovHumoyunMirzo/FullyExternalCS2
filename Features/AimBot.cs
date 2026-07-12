@@ -25,6 +25,7 @@ public class AimBot : ThreadedServiceBase
     private Vector2 _previousPunch = Vector2.Zero;
     private int _previousShotsFired;
 
+    private bool _isAimToggled;
     private bool _wasAimKeyDown;
 
     public AimBot(GameProcess gameProcess, GameData gameData)
@@ -63,11 +64,23 @@ public class AimBot : ThreadedServiceBase
             if (!Config.AimBot && !Config.AimRcs)
             {
                 _previousPunch = Vector2.Zero;
+                _isAimToggled = false;
+                _wasAimKeyDown = false;
                 return;
             }
 
             var aimKey = Config.AimBotKey;
             var aimKeyDown = aimKey.IsKeyDown();
+            if (Config.AimBot && aimKeyDown && !_wasAimKeyDown)
+            {
+                _isAimToggled = !_isAimToggled;
+            }
+            else if (!Config.AimBot)
+            {
+                _isAimToggled = false;
+            }
+
+            _wasAimKeyDown = aimKeyDown;
 
             if (GameData.Player.IsGrenade())
             {
@@ -89,14 +102,14 @@ public class AimBot : ThreadedServiceBase
             var aimAngles = Vector2.Zero;
             var cfgFov = (double)Config.AimFov;
             var aimPixels = Point.Empty;
-            var aimResult = Config.AimBot && aimKeyDown &&
+            var aimActive = Config.AimBot && _isAimToggled;
+            var aimResult = aimActive &&
                             GetAimTargetWithPrediction(out aimAngles, cfgFov.DegreeToRadian());
-            var recoilPixels = GetRecoilControlPixels(aimKeyDown, aimResult);
+            var recoilPixels = GetRecoilControlPixels(aimActive, aimResult);
 
-            if (!Config.AimBot || !aimKeyDown)
+            if (!aimActive)
             {
                 MoveMouse(recoilPixels);
-                _wasAimKeyDown = false;
                 return;
             }
 
@@ -112,8 +125,6 @@ public class AimBot : ThreadedServiceBase
             aimPixels.Y = Math.Clamp(aimPixels.Y + recoilPixels.Y, -100, 100);
 
             MoveMouse(aimPixels);
-
-            _wasAimKeyDown = aimKeyDown;
         }
         catch (Exception ex)
         {
@@ -121,7 +132,7 @@ public class AimBot : ThreadedServiceBase
         }
     }
 
-    private Point GetRecoilControlPixels(bool aimKeyDown, bool hasAimTarget)
+    private Point GetRecoilControlPixels(bool aimActive, bool hasAimTarget)
     {
         if (!Config.AimRcs || GameData?.Player == null || !Config.AimRcsKey.IsKeyDown())
         {
@@ -154,7 +165,7 @@ public class AimBot : ThreadedServiceBase
             return recoilPixels;
         }
 
-        if (Config.AimBot && aimKeyDown && !hasAimTarget)
+        if (aimActive && !hasAimTarget)
         {
             _previousShotsFired = player.ShotsFired;
             return Point.Empty;
