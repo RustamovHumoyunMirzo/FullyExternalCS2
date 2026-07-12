@@ -22,6 +22,7 @@ public class OverlayRenderer : Overlay
     private readonly AimBot _aimBot;
     private readonly TriggerBot _triggerBot;
     private readonly AntiFlash _antiFlash;
+    private readonly RadarHack _radarHack;
     private float _menuAlpha;
 
     static readonly Vector4 ColBg = new(0.10f, 0.11f, 0.14f, 0.97f);
@@ -46,6 +47,7 @@ public class OverlayRenderer : Overlay
         _aimBot = new AimBot(gp, gd);
         _triggerBot = new TriggerBot(gp, gd);
         _antiFlash = new AntiFlash(gp, gd);
+        _radarHack = new RadarHack(gp, gd);
     }
 
     protected override Task PostInitialized()
@@ -296,6 +298,14 @@ public class OverlayRenderer : Overlay
         {
             _config.TeamCheck = teamCheck;
         }
+
+        ImGui.Spacing();
+        SectionHeader("Radar");
+        var radarHack = _config.RadarHack;
+        if (Toggle("Radar Hack", ref radarHack))
+        {
+            _config.RadarHack = radarHack;
+        }
     }
 
     void TabSettings()
@@ -468,8 +478,8 @@ public class OverlayRenderer : Overlay
         }
     }
 
-    public void StartFeatures() { _bombTimer.Start(); _voteTeller.Start(); _triggerBot.Start(); _aimBot.Start(); _antiFlash.Start(); }
-    public void StopFeatures() { _bombTimer.Dispose(); _voteTeller.Dispose(); _triggerBot.Dispose(); _aimBot.Dispose(); _antiFlash.Dispose(); }
+    public void StartFeatures() { _bombTimer.Start(); _voteTeller.Start(); _triggerBot.Start(); _aimBot.Start(); _antiFlash.Start(); _radarHack.Start(); }
+    public void StopFeatures() { _bombTimer.Dispose(); _voteTeller.Dispose(); _triggerBot.Dispose(); _aimBot.Dispose(); _antiFlash.Dispose(); _radarHack.Dispose(); }
 
     public static uint ToColor(byte r, byte g, byte b, byte a = 255) =>
         ImGui.ColorConvertFloat4ToU32(new Vector4(r/255f, g/255f, b/255f, a/255f));

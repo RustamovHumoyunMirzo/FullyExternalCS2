@@ -5,7 +5,7 @@ namespace CS2Cheat.Core;
 public abstract class Kernel32
 {
     [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern bool ReadProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress,
+    public static extern bool ReadProcessMemory(IntPtr hProcess, IntPtr lpBaseAddress,
         [Out] IntPtr lpBuffer, int dwSize, out int lpNumberOfBytesRead);
 
     [DllImport("kernel32.dll", SetLastError = true)]
@@ -18,10 +18,5 @@ public abstract class Kernel32
     public static bool WriteMemory(IntPtr hProcess, IntPtr lpBaseAddress, byte[] lpBuffer)
     {
         return WriteProcessMemory(hProcess, lpBaseAddress, lpBuffer, lpBuffer.Length, out _);
-    }
-
-    public static bool ReadMemory(IntPtr hProcess, IntPtr lpBaseAddress, IntPtr lpBuffer, int dwSize)
-    {
-        return ReadProcessMemory(hProcess, lpBaseAddress, lpBuffer, dwSize, out _);
     }
 }

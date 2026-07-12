@@ -34,6 +34,7 @@ public class ConfigManager
 
     public bool TriggerBot { get; set; }
     public bool AntiFlash { get; set; }
+    public bool RadarHack { get; set; }
 
     [JsonConverter(typeof(KeysJsonConverter))]
     public Keys AimBotKey { get; set; }
@@ -236,6 +237,7 @@ public class ConfigManager
             SkeletonEsp = false,
             TriggerBot = true,
             AntiFlash = false,
+            RadarHack = true,
             AimBotKey = Keys.LButton,
             AimRcsKey = Keys.LButton,
             TriggerBotKey = Keys.LMenu,
