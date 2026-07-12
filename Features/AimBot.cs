@@ -109,6 +109,8 @@ public class AimBot : ThreadedServiceBase
 
             if (!aimActive)
             {
+                _lastTargetId = -1;
+                _lastTargetPos = Vector3.Zero;
                 MoveMouse(recoilPixels);
                 return;
             }
@@ -211,60 +213,64 @@ public class AimBot : ThreadedServiceBase
         var minAngleSize = float.MaxValue;
         aimAngles = new Vector2((float)Math.PI, (float)Math.PI);
         var targetFound = false;
+        var lockedTargetFound = false;
         var aimPosition = Vector3.Zero;
         var targetVel = Vector3.Zero;
 
         if (GameData == null)
         {
+            _lastTargetId = -1;
             return false;
+        }
+
+        var boneIdx = Math.Clamp(Config.AimBoneIndex, 0, ConfigManager.BoneNames.Length - 1);
+        var boneName = ConfigManager.BoneNames[boneIdx];
+
+        if (Config.AimLockTarget && _lastTargetId >= 0)
+        {
+            var lockedTarget = GameData.Entities?.FirstOrDefault(entity => entity.Id == _lastTargetId);
+            if (lockedTarget != null &&
+                TryGetAimTarget(lockedTarget, boneName, double.MaxValue, out _, out aimAngles, out aimPosition,
+                    out targetVel))
+            {
+                targetFound = true;
+                lockedTargetFound = true;
+            }
+            else
+            {
+                _lastTargetId = -1;
+                _lastTargetPos = Vector3.Zero;
+            }
         }
 
         foreach (var entity in GameData.Entities)
         {
-            if (!entity.IsAlive())
+            if (lockedTargetFound)
+            {
+                break;
+            }
+
+            if (!TryGetAimTarget(entity, boneName, customFov, out var angleSize, out var localAngles,
+                    out var bonePos, out var entityVel))
             {
                 continue;
             }
-
-            if (Config.TeamCheck && entity.Team == GameData.Player?.Team)
-            {
-                continue;
-            }
-
-            if (!entity.IsSpotted)
-            {
-                continue;
-            }
-
-            var boneIdx = Math.Clamp(Config.AimBoneIndex, 0, ConfigManager.BoneNames.Length - 1);
-            var boneName = ConfigManager.BoneNames[boneIdx];
-
-            if (!entity.BonePos.TryGetValue(boneName, out var bonePos))
-            {
-                continue;
-            }
-            if (bonePos == Vector3.Zero)
-            {
-                continue;
-            }
-
-            float angleSize;
-            Vector2 localAngles;
-            GetAimAngles(bonePos, out angleSize, out localAngles);
-
-            if (angleSize >= customFov)
-            {
-                continue;
-            }
-
             if (angleSize < minAngleSize)
             {
                 minAngleSize = angleSize;
                 aimAngles = localAngles;
                 aimPosition = bonePos;
                 targetFound = true;
-                targetVel = entity.Velocity;
+                targetVel = entityVel;
+                _lastTargetId = entity.Id;
             }
+        }
+
+        if (!targetFound)
+        {
+            _lastTargetId = -1;
+            _lastTargetPos = Vector3.Zero;
+            return false;
         }
 
         if (targetFound && targetVel != Vector3.Zero)
@@ -296,6 +302,46 @@ public class AimBot : ThreadedServiceBase
         }
 
         return targetFound;
+    }
+
+    private bool TryGetAimTarget(Entity entity, string boneName, double maxFov, out float angleSize,
+        out Vector2 aimAngles, out Vector3 aimPosition, out Vector3 targetVel)
+    {
+        angleSize = float.MaxValue;
+        aimAngles = Vector2.Zero;
+        aimPosition = Vector3.Zero;
+        targetVel = Vector3.Zero;
+
+        if (!entity.IsAlive())
+        {
+            return false;
+        }
+
+        if (Config.TeamCheck && entity.Team == GameData?.Player?.Team)
+        {
+            return false;
+        }
+
+        if (Config.AimOnlyVisible && !entity.IsSpotted)
+        {
+            return false;
+        }
+
+        if (!entity.BonePos.TryGetValue(boneName, out var bonePos) || bonePos == Vector3.Zero)
+        {
+            return false;
+        }
+
+        GetAimAngles(bonePos, out angleSize, out aimAngles);
+
+        if (angleSize >= maxFov)
+        {
+            return false;
+        }
+
+        aimPosition = bonePos;
+        targetVel = entity.Velocity;
+        return true;
     }
 
 

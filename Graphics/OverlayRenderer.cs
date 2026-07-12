@@ -36,7 +36,7 @@ public class OverlayRenderer : Overlay
     static readonly Vector4 ColItemActive = new(0.12f, 0.13f, 0.17f, 1f);
     static readonly Vector4 ColBorder = new(0.18f, 0.20f, 0.25f, 0.5f);
 
-    static readonly string[] TabNames = { "\u2022 Aimbot", "\u2022 Visuals", "\u2022 Misc", "\u2022 Settings", "\u2022 Config" };
+    static readonly string[] TabNames = { "\u2022 Aimbot", "\u2022 Visuals", "\u2022 Misc", "\u2022 Config" };
 
     public OverlayRenderer(GameProcess gp, GameData gd) : base(true)
     {
@@ -117,6 +117,7 @@ public class OverlayRenderer : Overlay
     void RenderMenu()
     {
         ApplyStyle();
+        _activeTab = Math.Clamp(_activeTab, 0, TabNames.Length - 1);
         ImGui.PushStyleVar(ImGuiStyleVar.Alpha, _menuAlpha);
 
         var menuSize = new Vector2(520, 420);
@@ -176,8 +177,7 @@ public class OverlayRenderer : Overlay
             case 0: TabAimbot(); break;
             case 1: TabVisuals(); break;
             case 2: TabMisc(); break;
-            case 3: TabSettings(); break;
-            case 4: TabConfig(); break;
+            case 3: TabConfig(); break;
         }
 
         ImGui.EndChild();
@@ -193,6 +193,21 @@ public class OverlayRenderer : Overlay
         if (Toggle("Enabled", ref aimBot))
         {
             _config.AimBot = aimBot;
+        }
+        DrawKeyBind("AimBot Key", "AimBotKey", _config.AimBotKey);
+
+        var aimOnlyVisible = _config.AimOnlyVisible;
+        if (Toggle("Only Visible", ref aimOnlyVisible))
+        {
+            _config.AimOnlyVisible = aimOnlyVisible;
+            ConfigManager.UpdateCache(_config);
+        }
+
+        var aimLockTarget = _config.AimLockTarget;
+        if (Toggle("Lock Target", ref aimLockTarget))
+        {
+            _config.AimLockTarget = aimLockTarget;
+            ConfigManager.UpdateCache(_config);
         }
 
         var aimFovCircle = _config.AimFovCircle;
@@ -221,6 +236,7 @@ public class OverlayRenderer : Overlay
         {
             _config.AimRcs = aimRcs;
         }
+        DrawKeyBind("RCS Key", "AimRcsKey", _config.AimRcsKey);
         if (aimRcs)
         {
             var rcsStrength = _config.AimRcsStrength;
@@ -284,6 +300,7 @@ public class OverlayRenderer : Overlay
         {
             _config.TriggerBot = triggerBot;
         }
+        DrawKeyBind("TriggerBot Key", "TriggerBotKey", _config.TriggerBotKey);
 
         var antiFlash = _config.AntiFlash;
         if (Toggle("Anti-Flash", ref antiFlash))
@@ -308,18 +325,11 @@ public class OverlayRenderer : Overlay
         }
     }
 
-    void TabSettings()
-    {
-        SectionHeader("Key Binds");
-        DrawKeyBind("AimBot", "AimBotKey", _config.AimBotKey);
-        DrawKeyBind("Recoil Control", "AimRcsKey", _config.AimRcsKey);
-        DrawKeyBind("TriggerBot", "TriggerBotKey", _config.TriggerBotKey);
-        DrawKeyBind("Menu Toggle", "MenuToggleKey", _config.MenuToggleKey);
-    }
-
     void TabConfig()
     {
         SectionHeader("Configuration");
+        DrawKeyBind("Menu Toggle", "MenuToggleKey", _config.MenuToggleKey);
+        ImGui.Spacing();
 
         ImGui.PushStyleColor(ImGuiCol.Button, ColAccent);
         ImGui.PushStyleColor(ImGuiCol.ButtonHovered, ColAccentDim);

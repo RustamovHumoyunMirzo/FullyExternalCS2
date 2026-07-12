@@ -25,6 +25,8 @@ public class ConfigManager
     public bool TeamCheck { get; set; }
 
     public bool AimBot { get; set; }
+    public bool AimOnlyVisible { get; set; }
+    public bool AimLockTarget { get; set; }
     public bool AimFovCircle { get; set; }
     public float AimFov { get; set; }
     public float AimSmoothing { get; set; }
@@ -137,6 +139,14 @@ public class ConfigManager
         {
             config.VoteTeller = defaults.VoteTeller;
         }
+        if (!json.Contains(nameof(AimOnlyVisible), StringComparison.OrdinalIgnoreCase))
+        {
+            config.AimOnlyVisible = defaults.AimOnlyVisible;
+        }
+        if (!json.Contains(nameof(AimLockTarget), StringComparison.OrdinalIgnoreCase))
+        {
+            config.AimLockTarget = defaults.AimLockTarget;
+        }
     }
 
     private static void SanitizeKeys(ConfigManager config)
@@ -220,6 +230,8 @@ public class ConfigManager
         return new ConfigManager
         {
             AimBot = true,
+            AimOnlyVisible = true,
+            AimLockTarget = true,
             AimFovCircle = true,
             AimFov = 15f,
             AimSmoothing = 3f,

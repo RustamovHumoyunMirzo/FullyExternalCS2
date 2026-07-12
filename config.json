@@ -15,6 +15,8 @@
   "VoteTeller": true,
   "TeamCheck": false,
   "AimBot": false,
+  "AimOnlyVisible": true,
+  "AimLockTarget": true,
   "AimFovCircle": false,
   "AimFov": 5.3,
   "AimSmoothing": 2.2,
