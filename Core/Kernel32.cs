@@ -19,4 +19,9 @@ public abstract class Kernel32
     {
         return WriteProcessMemory(hProcess, lpBaseAddress, lpBuffer, lpBuffer.Length, out _);
     }
+
+    public static bool ReadMemory(IntPtr hProcess, IntPtr lpBaseAddress, IntPtr lpBuffer, int dwSize)
+    {
+        return ReadProcessMemory(hProcess, lpBaseAddress, lpBuffer, dwSize, out _);
+    }
 }
