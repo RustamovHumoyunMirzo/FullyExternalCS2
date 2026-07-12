@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using CS2Cheat.Core;
 using CS2Cheat.Utils;
@@ -51,13 +52,11 @@ public class GameProcess : ThreadedServiceBase
     }
 
 
-    protected override async void FrameAction()
+    protected override void FrameAction()
     {
         if (!EnsureProcessAndModules()) InvalidateModules();
 
         EnsureWindow();
-
-        await Task.Delay(ThreadFrameSleep);
     }
 
 
@@ -84,9 +83,18 @@ public class GameProcess : ThreadedServiceBase
 
         if (ModuleClient == null && Process != null)
         {
-            var processModule = Process.Modules
-                .OfType<ProcessModule>()
-                .FirstOrDefault(m => m.ModuleName.Equals(NameModule, StringComparison.OrdinalIgnoreCase));
+            ProcessModule? processModule;
+            try
+            {
+                processModule = Process.Modules
+                    .OfType<ProcessModule>()
+                    .FirstOrDefault(m => m.ModuleName.Equals(NameModule, StringComparison.OrdinalIgnoreCase));
+            }
+            catch (Win32Exception ex) when (ex.NativeErrorCode == 5)
+            {
+                return false;
+            }
+
             if (processModule != null)
                 ModuleClient = new Module(Process, processModule);
         }
