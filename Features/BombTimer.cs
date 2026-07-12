@@ -22,7 +22,6 @@ internal class BombTimer : ThreadedServiceBase
     private float _currentTime;
     private IntPtr _globalVars;
     private IntPtr _plantedC4;
-    private IntPtr _tempC4;
 
     public BombTimer(GameProcess gameProcess)
     {
@@ -36,11 +35,17 @@ internal class BombTimer : ThreadedServiceBase
         _globalVars = _gameProcess.ModuleClient.Read<IntPtr>(Offsets.dwGlobalVars);
         _currentTime = _gameProcess.Process.Read<float>(_globalVars + 0x30);
 
-        _tempC4 = _gameProcess.ModuleClient.Read<IntPtr>(Offsets.dwPlantedC4);
-        _plantedC4 = _gameProcess.Process.Read<IntPtr>(_tempC4);
-        _isBombPlanted = _gameProcess.ModuleClient.Read<bool>(Offsets.dwPlantedC4 - 0x8);
+        _plantedC4 = _gameProcess.ModuleClient.Read<IntPtr>(Offsets.dwPlantedC4);
 
-        if (!_isBombPlanted || _plantedC4 == IntPtr.Zero)
+        if (_plantedC4 == IntPtr.Zero)
+        {
+            ResetBombState();
+            return;
+        }
+
+        UpdateIsBombPlanted(_gameProcess, _plantedC4);
+
+        if (!_isBombPlanted)
         {
             ResetBombState();
             return;
@@ -71,6 +76,11 @@ internal class BombTimer : ThreadedServiceBase
             _bombSite = _gameProcess.Process.Read<int>(_plantedC4 + Offsets.m_nBombSite) == 1 ? "B" : "A";
 
         _bombPlanted = $"Bomb is planted on site: {_bombSite}";
+    }
+
+    private static void UpdateIsBombPlanted(GameProcess gameProcess, IntPtr plantedC4)
+    {
+        _isBombPlanted = gameProcess.Process!.Read<bool>(plantedC4 + Offsets.m_bBombTicking);
     }
 
     private static void ResetBombState()
