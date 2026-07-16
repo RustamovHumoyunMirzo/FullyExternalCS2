@@ -25,8 +25,8 @@ public class AimBot : ThreadedServiceBase
     private Vector2 _previousPunch = Vector2.Zero;
     private int _previousShotsFired;
 
-    private bool _isAimToggled;
     private bool _wasAimKeyDown;
+    private bool _wasRcsKeyDown;
 
     public AimBot(GameProcess gameProcess, GameData gameData)
     {
@@ -55,32 +55,53 @@ public class AimBot : ThreadedServiceBase
     {
         try
         {
-            if (GameProcess == null || !GameProcess.IsValid || GameData?.Player == null ||
-                !GameData.Player.IsAlive())
+            if (GameProcess == null || !GameProcess.IsValid)
             {
                 return;
             }
 
-            if (!Config.AimBot && !Config.AimRcs)
+            var config = Config;
+            var aimKeyDown = config.AimBotKey.IsKeyDown();
+            var rcsKeyDown = config.AimRcsKey.IsKeyDown();
+            if (aimKeyDown && !_wasAimKeyDown)
             {
-                _previousPunch = Vector2.Zero;
-                _isAimToggled = false;
-                _wasAimKeyDown = false;
-                return;
-            }
+                config.AimBot = !config.AimBot;
+                ConfigManager.UpdateCache(config);
 
-            var aimKey = Config.AimBotKey;
-            var aimKeyDown = aimKey.IsKeyDown();
-            if (Config.AimBot && aimKeyDown && !_wasAimKeyDown)
-            {
-                _isAimToggled = !_isAimToggled;
+                if (!config.AimBot)
+                {
+                    _lastTargetId = -1;
+                    _lastTargetPos = Vector3.Zero;
+                }
             }
-            else if (!Config.AimBot)
+            if (rcsKeyDown && !_wasRcsKeyDown)
             {
-                _isAimToggled = false;
+                config.AimRcs = !config.AimRcs;
+                ConfigManager.UpdateCache(config);
+
+                if (!config.AimRcs)
+                {
+                    _previousPunch = Vector2.Zero;
+                    _previousShotsFired = 0;
+                }
             }
 
             _wasAimKeyDown = aimKeyDown;
+            _wasRcsKeyDown = rcsKeyDown;
+
+            if (GameData?.Player == null || !GameData.Player.IsAlive())
+            {
+                _previousPunch = Vector2.Zero;
+                _lastTargetId = -1;
+                _lastTargetPos = Vector3.Zero;
+                return;
+            }
+
+            if (!config.AimBot && !config.AimRcs)
+            {
+                _previousPunch = Vector2.Zero;
+                return;
+            }
 
             if (GameData.Player.IsGrenade())
             {
@@ -102,7 +123,7 @@ public class AimBot : ThreadedServiceBase
             var aimAngles = Vector2.Zero;
             var cfgFov = (double)Config.AimFov;
             var aimPixels = Point.Empty;
-            var aimActive = Config.AimBot && _isAimToggled;
+            var aimActive = Config.AimBot;
             var aimResult = aimActive &&
                             GetAimTargetWithPrediction(out aimAngles, cfgFov.DegreeToRadian());
             var recoilPixels = GetRecoilControlPixels(aimActive, aimResult);
@@ -136,7 +157,7 @@ public class AimBot : ThreadedServiceBase
 
     private Point GetRecoilControlPixels(bool aimActive, bool hasAimTarget)
     {
-        if (!Config.AimRcs || GameData?.Player == null || !Config.AimRcsKey.IsKeyDown())
+        if (!Config.AimRcs || GameData?.Player == null)
         {
             _previousPunch = Vector2.Zero;
             _previousShotsFired = 0;

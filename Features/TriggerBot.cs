@@ -1,6 +1,5 @@
 using CS2Cheat.Data.Game;
 using CS2Cheat.Utils;
-using Keys = Process.NET.Native.Types.Keys;
 
 namespace CS2Cheat.Features;
 
@@ -27,12 +26,23 @@ public sealed class TriggerBot : ThreadedServiceBase
 
 
     private DateTime _lastTriggerTime = DateTime.MinValue;
+    private bool _wasTriggerKeyDown;
 
     protected override string ThreadName => nameof(TriggerBot);
 
     protected override void FrameAction()
     {
-        if (!ConfigManager.Load().TriggerBot) return;
+        var config = ConfigManager.Load();
+        var triggerKeyDown = config.TriggerBotKey.IsKeyDown();
+        if (triggerKeyDown && !_wasTriggerKeyDown)
+        {
+            config.TriggerBot = !config.TriggerBot;
+            ConfigManager.UpdateCache(config);
+        }
+
+        _wasTriggerKeyDown = triggerKeyDown;
+
+        if (!config.TriggerBot) return;
         
         if (!ShouldExecuteTriggerBot())
             return;
@@ -56,7 +66,7 @@ public sealed class TriggerBot : ThreadedServiceBase
 
     private bool ShouldExecuteTriggerBot()
     {
-        return _gameProcess.IsValid && IsHotKeyDown();
+        return _gameProcess.IsValid;
     }
 
     private IntPtr GetTargetEntity()
@@ -98,11 +108,6 @@ public sealed class TriggerBot : ThreadedServiceBase
         Utility.MouseLeftDown();
         Thread.Sleep(10);
         Utility.MouseLeftUp();
-    }
-
-    public static bool IsHotKeyDown()
-    {
-        return ConfigManager.Load().TriggerBotKey.IsKeyDown();
     }
 
     public override void Dispose()
