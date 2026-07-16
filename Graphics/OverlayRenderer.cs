@@ -15,6 +15,7 @@ public class OverlayRenderer : Overlay
     private readonly GameData _gameData;
     private ConfigManager _config;
     private bool _showMenu, _menuKeyWasDown, _styleApplied;
+    private bool _menuPositionInitialized, _menuPositionDirty;
     private int _activeTab;
     private string? _waitingForBind;
     private readonly BombTimer _bombTimer;
@@ -24,6 +25,7 @@ public class OverlayRenderer : Overlay
     private readonly AntiFlash _antiFlash;
     private readonly RadarHack _radarHack;
     private float _menuAlpha;
+    private Vector2 _lastMenuPosition;
 
     static readonly Vector4 ColBg = new(0.10f, 0.11f, 0.14f, 0.97f);
     static readonly Vector4 ColSidebar = new(0.08f, 0.09f, 0.11f, 1f);
@@ -74,6 +76,10 @@ public class OverlayRenderer : Overlay
         if (mkd && !_menuKeyWasDown)
         {
             _showMenu = !_showMenu;
+            if (_showMenu)
+            {
+                _menuPositionInitialized = false;
+            }
         }
         _menuKeyWasDown = mkd;
 
@@ -122,11 +128,16 @@ public class OverlayRenderer : Overlay
 
         var menuSize = new Vector2(520, 420);
         var io = ImGui.GetIO();
-        var pos = (io.DisplaySize - menuSize) * 0.5f;
-        ImGui.SetNextWindowPos(pos, ImGuiCond.Always);
+        if (!_menuPositionInitialized)
+        {
+            var pos = GetInitialMenuPosition(io.DisplaySize, menuSize);
+            ImGui.SetNextWindowPos(pos, ImGuiCond.Always);
+            _lastMenuPosition = pos;
+            _menuPositionInitialized = true;
+        }
         ImGui.SetNextWindowSize(menuSize, ImGuiCond.Always);
         ImGui.Begin("##main", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize |
-            ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse);
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse);
 
         ImGui.PushStyleColor(ImGuiCol.ChildBg, ColSidebar);
         ImGui.BeginChild("##sidebar", new Vector2(150, 0), ImGuiChildFlags.None);
@@ -182,8 +193,61 @@ public class OverlayRenderer : Overlay
 
         ImGui.EndChild();
         ImGui.PopStyleVar();
+        TrackMenuPosition();
         ImGui.End();
         ImGui.PopStyleVar();
+    }
+
+    Vector2 GetInitialMenuPosition(Vector2 displaySize, Vector2 menuSize)
+    {
+        var hasSavedPosition = _config.MenuPositionX >= 0f && _config.MenuPositionY >= 0f;
+        var pos = hasSavedPosition
+            ? new Vector2(_config.MenuPositionX, _config.MenuPositionY)
+            : (displaySize - menuSize) * 0.5f;
+
+        return ClampMenuPosition(pos, displaySize, menuSize);
+    }
+
+    static Vector2 ClampMenuPosition(Vector2 pos, Vector2 displaySize, Vector2 menuSize)
+    {
+        var maxX = Math.Max(0f, displaySize.X - menuSize.X);
+        var maxY = Math.Max(0f, displaySize.Y - menuSize.Y);
+        return new Vector2(Math.Clamp(pos.X, 0f, maxX), Math.Clamp(pos.Y, 0f, maxY));
+    }
+
+    void TrackMenuPosition()
+    {
+        var pos = ImGui.GetWindowPos();
+        var size = ImGui.GetWindowSize();
+        var io = ImGui.GetIO();
+
+        if (ImGui.IsMouseDragging(ImGuiMouseButton.Left) && !ImGui.IsAnyItemActive() &&
+            IsPointInRect(io.MousePos, pos, size))
+        {
+            pos = ClampMenuPosition(pos + io.MouseDelta, io.DisplaySize, size);
+            ImGui.SetWindowPos(pos);
+        }
+
+        if (Vector2.DistanceSquared(pos, _lastMenuPosition) > 0.25f)
+        {
+            _lastMenuPosition = pos;
+            _config.MenuPositionX = pos.X;
+            _config.MenuPositionY = pos.Y;
+            _menuPositionDirty = true;
+            ConfigManager.UpdateCache(_config);
+        }
+
+        if (_menuPositionDirty && !ImGui.IsMouseDown(ImGuiMouseButton.Left))
+        {
+            ConfigManager.Save(_config);
+            _menuPositionDirty = false;
+        }
+    }
+
+    static bool IsPointInRect(Vector2 point, Vector2 pos, Vector2 size)
+    {
+        return point.X >= pos.X && point.X <= pos.X + size.X &&
+               point.Y >= pos.Y && point.Y <= pos.Y + size.Y;
     }
 
     void TabAimbot()

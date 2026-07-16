@@ -38,6 +38,9 @@ public class ConfigManager
     public bool AntiFlash { get; set; }
     public bool RadarHack { get; set; }
 
+    public float MenuPositionX { get; set; }
+    public float MenuPositionY { get; set; }
+
     [JsonConverter(typeof(KeysJsonConverter))]
     public Keys AimBotKey { get; set; }
 
@@ -147,6 +150,14 @@ public class ConfigManager
         {
             config.AimLockTarget = defaults.AimLockTarget;
         }
+        if (!json.Contains(nameof(MenuPositionX), StringComparison.OrdinalIgnoreCase))
+        {
+            config.MenuPositionX = defaults.MenuPositionX;
+        }
+        if (!json.Contains(nameof(MenuPositionY), StringComparison.OrdinalIgnoreCase))
+        {
+            config.MenuPositionY = defaults.MenuPositionY;
+        }
     }
 
     private static void SanitizeKeys(ConfigManager config)
@@ -229,32 +240,34 @@ public class ConfigManager
     {
         return new ConfigManager
         {
-            AimBot = true,
+            AimBot = false,
             AimOnlyVisible = true,
-            AimLockTarget = true,
-            AimFovCircle = true,
+            AimLockTarget = false,
+            AimFovCircle = false,
             AimFov = 15f,
             AimSmoothing = 3f,
             AimBoneIndex = 0,
-            AimRcs = true,
+            AimRcs = false,
             AimRcsStrength = 100f,
-            BombTimer = true,
-            VoteTeller = true,
+            BombTimer = false,
+            VoteTeller = false,
             EspAimCrosshair = false,
-            EspBox = true,
-            EspName = true,
-            EspWeapon = true,
-            EspFlags = true,
+            EspBox = false,
+            EspName = false,
+            EspWeapon = false,
+            EspFlags = false,
             EspBoxColor = new float[] { 1f, 0f, 0f, 1f },
             SkeletonEsp = false,
-            TriggerBot = true,
+            TriggerBot = false,
             AntiFlash = false,
-            RadarHack = true,
+            RadarHack = false,
             AimBotKey = Keys.LButton,
             AimRcsKey = Keys.LButton,
             TriggerBotKey = Keys.LMenu,
             MenuToggleKey = Keys.Insert,
-            TeamCheck = true
+            TeamCheck = true,
+            MenuPositionX = -1f,
+            MenuPositionY = -1f
         };
     }
 
