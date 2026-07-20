@@ -46,15 +46,23 @@ public static class GraphicsMath
 
     public static float GetSignedAngleTo(this Vector3 vector, Vector3 other, Vector3 about)
     {
-        if (vector.IsParallelTo(about, 1E-9f))
-            throw new ArgumentException($"'{nameof(vector)}' is parallel to '{nameof(about)}'.");
-        if (other.IsParallelTo(about, 1E-9f))
-            throw new ArgumentException($"'{nameof(other)}' is parallel to '{nameof(about)}'.");
-
         var plane = new Plane3D(about, new Vector3());
-        var vectorOnPlane = plane.ProjectVector(vector).vector.GetNormalized();
-        var otherOnPlane = plane.ProjectVector(other).vector.GetNormalized();
-        var crossProduct = Vector3.Cross(vectorOnPlane, otherOnPlane).GetNormalized();
+        var vectorProjected = plane.ProjectVector(vector).vector;
+        var otherProjected = plane.ProjectVector(other).vector;
+        if (vectorProjected.LengthSquared() < 0.000001f || otherProjected.LengthSquared() < 0.000001f)
+        {
+            return 0f;
+        }
+
+        var vectorOnPlane = vectorProjected.GetNormalized();
+        var otherOnPlane = otherProjected.GetNormalized();
+        var crossProductRaw = Vector3.Cross(vectorOnPlane, otherOnPlane);
+        if (crossProductRaw.LengthSquared() < 0.000001f)
+        {
+            return 0f;
+        }
+
+        var crossProduct = crossProductRaw.GetNormalized();
         var sign = Vector3.Dot(crossProduct, plane.Normal);
         return GetAngleBetweenUnitVectors(vectorOnPlane, otherOnPlane) * sign;
     }
