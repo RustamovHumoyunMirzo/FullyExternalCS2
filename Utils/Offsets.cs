@@ -37,6 +37,7 @@ public abstract class Offsets
     public static int dwViewMatrix;
     public static int dwViewAngles;
     public static int m_entitySpottedState;
+    public static int m_bSpottedByMask;
     public static int m_Item;
     public static int m_pClippingWeapon;
     public static int m_AttributeManager;
@@ -186,6 +187,7 @@ public abstract class Offsets
             ["m_iShotsFired"] = sourceDataClient.clientdll.classes.C_CSPlayerPawn.fields.m_iShotsFired,
             ["m_hPawn"] = sourceDataClient.clientdll.classes.CBasePlayerController.fields.m_hPawn,
             ["m_entitySpottedState"] = sourceDataClient.clientdll.classes.C_CSPlayerPawn.fields.m_entitySpottedState,
+            ["m_bSpottedByMask"] = sourceDataClient.clientdll.classes.EntitySpottedState_t.fields.m_bSpottedByMask,
             ["m_Item"] = sourceDataClient.clientdll.classes.C_AttributeContainer.fields.m_Item,
             ["m_pClippingWeapon"] = sourceDataClient.clientdll.classes.C_CSPlayerPawnBase.fields.m_pClippingWeapon,
             ["m_AttributeManager"] = sourceDataClient.clientdll.classes.C_EconEntity.fields.m_AttributeManager,
@@ -255,6 +257,7 @@ public abstract class Offsets
         dwViewAngles = data["dwViewAngles"];
         dwEntityList = data["dwEntityList"];
         m_entitySpottedState = data["m_entitySpottedState"];
+        m_bSpottedByMask = data.TryGetValue("m_bSpottedByMask", out var spottedByMask) ? spottedByMask : 0xC;
         m_Item = data["m_Item"];
         m_pClippingWeapon = data["m_pClippingWeapon"];
         m_AttributeManager = data["m_AttributeManager"];

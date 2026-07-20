@@ -9,6 +9,7 @@ public class Entity : EntityBase
 {
     private readonly ConcurrentDictionary<string, Vector3> _bonePositions;
     private bool _dormant = true;
+    private ulong _spottedByMask;
 
     public Entity(int index)
     {
@@ -63,6 +64,7 @@ public class Entity : EntityBase
 
         _dormant = gameProcess.Process != null && gameProcess.Process.Read<bool>(AddressBase + Offsets.m_bDormant);
         IsSpotted = gameProcess.Process?.Read<bool>(AddressBase + Offsets.m_entitySpottedState + 0x8) ?? false;
+        _spottedByMask = gameProcess.Process?.Read<ulong>(AddressBase + Offsets.m_entitySpottedState + Offsets.m_bSpottedByMask) ?? 0UL;
         IsInScope = gameProcess.Process?.Read<int>(AddressBase + Offsets.m_bIsScoped) ?? 0;
         FlashAlpha = gameProcess.Process?.Read<int>(AddressBase + Offsets.m_flFlashDuration) ?? 0;
         Name = gameProcess.Process != null
@@ -93,6 +95,18 @@ public class Entity : EntityBase
         {
             return false;
         }
+    }
+
+    public bool IsSpottedBy(int playerId)
+    {
+        if (playerId < 0 || playerId >= 64)
+        {
+            return false;
+        }
+
+        var zeroBasedBit = 1UL << playerId;
+        var oneBasedBit = playerId < 63 ? 1UL << (playerId + 1) : 0UL;
+        return (_spottedByMask & (zeroBasedBit | oneBasedBit)) != 0;
     }
 
 }

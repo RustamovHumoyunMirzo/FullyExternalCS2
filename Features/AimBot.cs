@@ -343,7 +343,7 @@ public class AimBot : ThreadedServiceBase
             return false;
         }
 
-        if (Config.AimOnlyVisible && !entity.IsSpotted)
+        if (Config.AimOnlyVisible && !entity.IsSpottedBy(GameData?.LocalPlayerId ?? -1))
         {
             return false;
         }
@@ -376,27 +376,38 @@ public class AimBot : ThreadedServiceBase
             return;
         }
 
-        var aimDirection = GameData.Player.EyeDirection;
+        var currentPitch = GameData.Player.ViewAngles.X;
+        var currentYaw = GameData.Player.ViewAngles.Y;
         if (Config.AimRcs && GameData.Player.AimPunchAngle.LengthSquared() >= 0.0001f)
         {
             var rcsScale = Config.AimRcsStrength / 100f;
-            var viewAngles = GameData.Player.ViewAngles;
             var punch = GameData.Player.AimPunchAngle * Offsets.WeaponRecoilScale * rcsScale;
-            aimDirection = GraphicsMath.GetVectorFromEulerAngles(
-                (viewAngles.X + punch.X).DegreeToRadian(),
-                (viewAngles.Y + punch.Y).DegreeToRadian()
-            );
+            currentPitch += punch.X;
+            currentYaw += punch.Y;
         }
 
-        var aimDirectionDesired = Vector3.Normalize(pointWorld - GameData.Player.EyePosition);
+        var desiredDirection = pointWorld - GameData.Player.EyePosition;
+        if (desiredDirection.LengthSquared() < 0.000001f)
+        {
+            return;
+        }
 
-        var horizontalAngle = aimDirectionDesired.GetSignedAngleTo(aimDirection, new Vector3(0, 0, 1));
-        var verticalAngle = aimDirectionDesired.GetSignedAngleTo(aimDirection,
-            Vector3.Normalize(Vector3.Cross(aimDirectionDesired, new Vector3(0, 0, 1))));
+        var horizontalLength = MathF.Sqrt(desiredDirection.X * desiredDirection.X + desiredDirection.Y * desiredDirection.Y);
+        var desiredPitch = -MathF.Atan2(desiredDirection.Z, horizontalLength) * 180f / MathF.PI;
+        var desiredYaw = MathF.Atan2(desiredDirection.Y, desiredDirection.X) * 180f / MathF.PI;
+
+        var horizontalAngle = NormalizeAngleDegrees(desiredYaw - currentYaw).DegreeToRadian();
+        var verticalAngle = NormalizeAngleDegrees(desiredPitch - currentPitch).DegreeToRadian();
 
         aimAngles = new Vector2(horizontalAngle, verticalAngle);
+        angleSize = MathF.Sqrt(horizontalAngle * horizontalAngle + verticalAngle * verticalAngle);
+    }
 
-        angleSize = aimDirection.GetAngleTo(aimDirectionDesired);
+    private static float NormalizeAngleDegrees(float angle)
+    {
+        while (angle > 180f) angle -= 360f;
+        while (angle < -180f) angle += 360f;
+        return angle;
     }
 
 

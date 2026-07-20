@@ -15,6 +15,8 @@ public class GameData : ThreadedServiceBase
 
     public Entity.Entity[]? Entities { get; private set; }
 
+    public int LocalPlayerId { get; private set; } = -1;
+
     #endregion
 
     #region methods
@@ -41,8 +43,14 @@ public class GameData : ThreadedServiceBase
         if (Player != null) Player.Update(GameProcess);
 
         if (Entities != null)
+        {
             foreach (var entity in Entities)
                 entity.Update(GameProcess);
+
+            LocalPlayerId = Player == null
+                ? -1
+                : Array.Find(Entities, entity => entity.AddressBase == Player.AddressBase)?.Id ?? -1;
+        }
     }
 
     #endregion
