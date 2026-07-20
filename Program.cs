@@ -11,8 +11,12 @@ public class Program
         Console.WriteLine("[INFO] FullyExternalCS2 v2.0 (ImGui Edition)");
         Console.WriteLine("[INFO] Updating offsets...");
 
-        await Offsets.UpdateOffsets();
-        Console.WriteLine("[INFO] Offsets updated successfully.");
+        if (!await Offsets.UpdateOffsets())
+        {
+            Console.WriteLine("[INFO] Process finished.");
+            return;
+        }
+        Console.WriteLine("[INFO] Offsets ready.");
 
         Console.WriteLine("[INFO] Waiting for CS2 process...");
         var gameProcess = new GameProcess();
