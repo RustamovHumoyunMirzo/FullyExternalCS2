@@ -14,7 +14,7 @@ public class AimBot : ThreadedServiceBase
 {
     private const int AimUpdateIntervalMs = 500;
     private const int AimEventWindowMs = 1000;
-    private static double _anglePerPixel;
+    private const double AnglePerPixel = 0.0005;
     private DateTime _lastAimEvent = DateTime.MinValue;
     private DateTime _lastAiUpdate = DateTime.MinValue;
 
@@ -35,8 +35,6 @@ public class AimBot : ThreadedServiceBase
     }
 
     private static ConfigManager Config => ConfigManager.Load();
-
-    private bool IsCalibrated { get; set; }
 
     protected override string ThreadName => nameof(AimBot);
 
@@ -109,23 +107,15 @@ public class AimBot : ThreadedServiceBase
                 return;
             }
 
-            if (!IsCalibrated)
-            {
-                Calibrate();
-                IsCalibrated = true;
-            }
-
             if ((DateTime.Now - _lastAiUpdate).TotalMilliseconds > AimUpdateIntervalMs)
             {
                 _lastAiUpdate = DateTime.Now;
             }
 
-            var aimAngles = Vector2.Zero;
             var cfgFov = (double)Config.AimFov;
             var aimPixels = Point.Empty;
             var aimActive = Config.AimBot;
-            var aimResult = aimActive &&
-                            GetAimTargetWithPrediction(out aimAngles, cfgFov.DegreeToRadian());
+            var aimResult = aimActive && GetAimTargetPixels(out aimPixels, cfgFov);
             var recoilPixels = GetRecoilControlPixels(aimActive, aimResult);
 
             if (!aimActive)
@@ -134,14 +124,6 @@ public class AimBot : ThreadedServiceBase
                 _lastTargetPos = Vector3.Zero;
                 MoveMouse(recoilPixels);
                 return;
-            }
-
-            if (aimResult)
-            {
-                if (!float.IsNaN(aimAngles.X) && !float.IsNaN(aimAngles.Y))
-                {
-                    GetAimPixels(aimAngles, out aimPixels);
-                }
             }
 
             aimPixels.X = Math.Clamp(aimPixels.X + recoilPixels.X, -100, 100);
@@ -229,16 +211,15 @@ public class AimBot : ThreadedServiceBase
         Thread.Sleep(15);
     }
 
-    private bool GetAimTargetWithPrediction(out Vector2 aimAngles, double customFov)
+    private bool GetAimTargetPixels(out Point aimPixels, double customFovDegrees)
     {
-        var minAngleSize = float.MaxValue;
-        aimAngles = new Vector2((float)Math.PI, (float)Math.PI);
+        var minDistanceSquared = float.MaxValue;
+        aimPixels = Point.Empty;
         var targetFound = false;
         var lockedTargetFound = false;
-        var aimPosition = Vector3.Zero;
-        var targetVel = Vector3.Zero;
+        var aimPositionScreen = Vector2.Zero;
 
-        if (GameData == null)
+        if (GameData?.Player == null || GameProcess == null)
         {
             _lastTargetId = -1;
             return false;
@@ -251,8 +232,7 @@ public class AimBot : ThreadedServiceBase
         {
             var lockedTarget = GameData.Entities?.FirstOrDefault(entity => entity.Id == _lastTargetId);
             if (lockedTarget != null &&
-                TryGetAimTarget(lockedTarget, boneName, double.MaxValue, out _, out aimAngles, out aimPosition,
-                    out targetVel))
+                TryGetAimTargetScreen(lockedTarget, boneName, float.MaxValue, out _, out aimPositionScreen))
             {
                 targetFound = true;
                 lockedTargetFound = true;
@@ -271,18 +251,16 @@ public class AimBot : ThreadedServiceBase
                 break;
             }
 
-            if (!TryGetAimTarget(entity, boneName, customFov, out var angleSize, out var localAngles,
-                    out var bonePos, out var entityVel))
+            var fovRadius = GetFovRadiusPixels(customFovDegrees);
+            if (!TryGetAimTargetScreen(entity, boneName, fovRadius, out var distanceSquared, out var boneScreen))
             {
                 continue;
             }
-            if (angleSize < minAngleSize)
+            if (distanceSquared < minDistanceSquared)
             {
-                minAngleSize = angleSize;
-                aimAngles = localAngles;
-                aimPosition = bonePos;
+                minDistanceSquared = distanceSquared;
+                aimPositionScreen = boneScreen;
                 targetFound = true;
-                targetVel = entityVel;
                 _lastTargetId = entity.Id;
             }
         }
@@ -294,46 +272,27 @@ public class AimBot : ThreadedServiceBase
             return false;
         }
 
-        if (targetFound && targetVel != Vector3.Zero)
-        {
-            var now = DateTime.Now;
-            var timeSinceLastTarget = (now - _lastTargetUpdate).TotalSeconds;
+        var screenCenter = GetScreenCenter();
+        var smoothFactor = Math.Max(Config.AimSmoothing, 1.0f);
+        aimPixels = new Point(
+            (int)Math.Round((aimPositionScreen.X - screenCenter.X) / smoothFactor),
+            (int)Math.Round((aimPositionScreen.Y - screenCenter.Y) / smoothFactor)
+        );
 
-            if (timeSinceLastTarget < 0.5 && _lastTargetPos != Vector3.Zero)
-            {
-                var predictedPos = aimPosition + targetVel * (float)(timeSinceLastTarget * 0.5);
-                float angleSize;
-                Vector2 predictedAngles;
-                GetAimAngles(predictedPos, out angleSize, out predictedAngles);
-                if (angleSize < customFov)
-                {
-                    aimAngles = predictedAngles;
-                }
-            }
-
-            _lastTargetPos = aimPosition;
-            _lastTargetVel = targetVel;
-            _lastTargetUpdate = now;
-        }
-
-        if (targetFound)
-        {
-            var smoothFactor = Math.Max(Config.AimSmoothing, 1.0f);
-            aimAngles /= smoothFactor;
-        }
+        _lastTargetPos = new Vector3(aimPositionScreen, 0f);
+        _lastTargetVel = Vector3.Zero;
+        _lastTargetUpdate = DateTime.Now;
 
         return targetFound;
     }
 
-    private bool TryGetAimTarget(Entity entity, string boneName, double maxFov, out float angleSize,
-        out Vector2 aimAngles, out Vector3 aimPosition, out Vector3 targetVel)
+    private bool TryGetAimTargetScreen(Entity entity, string boneName, float maxDistancePixels,
+        out float distanceSquared, out Vector2 aimPositionScreen)
     {
-        angleSize = float.MaxValue;
-        aimAngles = Vector2.Zero;
-        aimPosition = Vector3.Zero;
-        targetVel = Vector3.Zero;
+        distanceSquared = float.MaxValue;
+        aimPositionScreen = Vector2.Zero;
 
-        if (!entity.IsAlive())
+        if (GameData?.Player == null || !entity.IsAlive() || entity.AddressBase == GameData.Player.AddressBase)
         {
             return false;
         }
@@ -343,7 +302,7 @@ public class AimBot : ThreadedServiceBase
             return false;
         }
 
-        if (Config.AimOnlyVisible && !entity.IsSpottedBy(GameData?.LocalPlayerId ?? -1))
+        if (Config.AimOnlyVisible && !IsVisibleTarget(entity))
         {
             return false;
         }
@@ -353,18 +312,49 @@ public class AimBot : ThreadedServiceBase
             return false;
         }
 
-        GetAimAngles(bonePos, out angleSize, out aimAngles);
-
-        if (angleSize >= maxFov)
+        var rectangle = GameProcess?.WindowRectangleClient ?? System.Drawing.Rectangle.Empty;
+        var transformed = GameData.Player.MatrixViewProjectionViewport.Transform(bonePos);
+        if (transformed.Z >= 1 ||
+            transformed.X < 0 || transformed.Y < 0 ||
+            transformed.X > rectangle.Width || transformed.Y > rectangle.Height)
         {
             return false;
         }
 
-        aimPosition = bonePos;
-        targetVel = entity.Velocity;
+        var screenCenter = GetScreenCenter();
+        aimPositionScreen = new Vector2(transformed.X, transformed.Y);
+        distanceSquared = Vector2.DistanceSquared(aimPositionScreen, screenCenter);
+        if (distanceSquared > maxDistancePixels * maxDistancePixels)
+        {
+            return false;
+        }
+
         return true;
     }
 
+    private Vector2 GetScreenCenter()
+    {
+        var rectangle = GameProcess?.WindowRectangleClient ?? System.Drawing.Rectangle.Empty;
+        return new Vector2(rectangle.Width * 0.5f, rectangle.Height * 0.5f);
+    }
+
+    private float GetFovRadiusPixels(double fovDegrees)
+    {
+        var rectangle = GameProcess?.WindowRectangleClient ?? System.Drawing.Rectangle.Empty;
+        var halfWidth = rectangle.Width > 0 ? rectangle.Width * 0.5 : Player.Fov * 10.0;
+        return (float)(Math.Tan(fovDegrees.DegreeToRadian() / 2.0) /
+                       Math.Tan(90.0.DegreeToRadian() / 2.0) * halfWidth);
+    }
+
+    private bool IsVisibleTarget(Entity entity)
+    {
+        if (GameData == null)
+        {
+            return false;
+        }
+
+        return GameData.LocalPlayerId >= 0 && entity.IsSpottedBy(GameData.LocalPlayerId);
+    }
 
     private void GetAimAngles(Vector3 pointWorld, out float angleSize, out Vector2 aimAngles)
     {
@@ -376,85 +366,42 @@ public class AimBot : ThreadedServiceBase
             return;
         }
 
-        var aimDirection = GameData.Player.EyeDirection;
-        if (Config.AimRcs && GameData.Player.AimPunchAngle.LengthSquared() >= 0.0001f)
-        {
-            var rcsScale = Config.AimRcsStrength / 100f;
-            var viewAngles = GameData.Player.ViewAngles;
-            var punch = GameData.Player.AimPunchAngle * Offsets.WeaponRecoilScale * rcsScale;
-            aimDirection = GraphicsMath.GetVectorFromEulerAngles(
-                (viewAngles.X + punch.X).DegreeToRadian(),
-                (viewAngles.Y + punch.Y).DegreeToRadian()
-            );
-        }
-
-        var aimDirectionDesired = pointWorld - GameData.Player.EyePosition;
-        if (aimDirectionDesired.LengthSquared() < 0.000001f)
+        var desiredDirection = pointWorld - GameData.Player.EyePosition;
+        if (desiredDirection.LengthSquared() < 0.000001f)
         {
             return;
         }
 
-        aimDirectionDesired = Vector3.Normalize(aimDirectionDesired);
+        var horizontalLength = MathF.Sqrt(desiredDirection.X * desiredDirection.X + desiredDirection.Y * desiredDirection.Y);
+        if (horizontalLength < 0.000001f)
+        {
+            return;
+        }
 
-        var horizontalAngle = aimDirectionDesired.GetSignedAngleTo(aimDirection, new Vector3(0, 0, 1));
-        var verticalAxis = Vector3.Cross(aimDirectionDesired, new Vector3(0, 0, 1));
-        var verticalAngle = verticalAxis.LengthSquared() < 0.000001f
-            ? 0f
-            : aimDirectionDesired.GetSignedAngleTo(aimDirection, Vector3.Normalize(verticalAxis));
+        var desiredPitch = -MathF.Atan2(desiredDirection.Z, horizontalLength) * 180f / MathF.PI;
+        var desiredYaw = MathF.Atan2(desiredDirection.Y, desiredDirection.X) * 180f / MathF.PI;
+        var currentAngles = GameData.Player.ViewAngles;
+
+        var horizontalAngle = NormalizeAngleDegrees(desiredYaw - currentAngles.Y).DegreeToRadian();
+        var verticalAngle = NormalizeAngleDegrees(desiredPitch - currentAngles.X).DegreeToRadian();
 
         aimAngles = new Vector2(horizontalAngle, verticalAngle);
-        angleSize = aimDirection.GetAngleTo(aimDirectionDesired);
+        angleSize = MathF.Sqrt(horizontalAngle * horizontalAngle + verticalAngle * verticalAngle);
     }
 
+    private static float NormalizeAngleDegrees(float angle)
+    {
+        while (angle > 180f) angle -= 360f;
+        while (angle < -180f) angle += 360f;
+        return angle;
+    }
 
     private static void GetAimPixels(Vector2 aimAngles, out Point aimPixels)
     {
         var fovRatio = 90.0 / Player.Fov;
-        var anglePerPx = _anglePerPixel > 0 ? _anglePerPixel : 0.0005;
         aimPixels = new Point(
-            (int)Math.Round(aimAngles.X / anglePerPx * fovRatio),
-            (int)Math.Round(aimAngles.Y / anglePerPx * fovRatio)
+            (int)Math.Round(aimAngles.X / AnglePerPixel * fovRatio),
+            (int)Math.Round(aimAngles.Y / AnglePerPixel * fovRatio)
         );
-    }
-
-    private void Calibrate()
-    {
-        var measures = new[]
-        {
-            CalibrationMeasureAnglePerPixel(100),
-            CalibrationMeasureAnglePerPixel(-200),
-            CalibrationMeasureAnglePerPixel(300),
-            CalibrationMeasureAnglePerPixel(-400),
-            CalibrationMeasureAnglePerPixel(200)
-        }.Where(x => x > 0).ToArray();
-
-        _anglePerPixel = measures.Length > 0 ? measures.Average() : 0.0005;
-    }
-
-    private double CalibrationMeasureAnglePerPixel(int deltaPixels)
-    {
-        Thread.Sleep(100);
-
-        if (GameData == null || GameData.Player == null)
-        {
-            return 0.0;
-        }
-
-        var eyeDirectionStart = GameData.Player.EyeDirection;
-        eyeDirectionStart.Z = 0;
-
-        Utility.MouseMove(deltaPixels, 0);
-
-        Thread.Sleep(100);
-
-        if (GameData == null || GameData.Player == null)
-        {
-            return 0.0;
-        }
-
-        var eyeDirectionEnd = GameData.Player.EyeDirection;
-        eyeDirectionEnd.Z = 0;
-
-        return eyeDirectionEnd.GetAngleTo(eyeDirectionStart) / Math.Abs(deltaPixels);
     }
 }

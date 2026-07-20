@@ -24,6 +24,7 @@ public class Entity : EntityBase
     protected internal string Name { get; private set; } = string.Empty;
     protected internal int IsInScope { get; private set; }
     protected internal int FlashAlpha { get; private set; }
+    public bool IsLocalPlayerController { get; private set; }
     public IReadOnlyDictionary<string, Vector3> BonePos => _bonePositions;
     public int Id { get; }
 
@@ -65,6 +66,8 @@ public class Entity : EntityBase
         _dormant = gameProcess.Process != null && gameProcess.Process.Read<bool>(AddressBase + Offsets.m_bDormant);
         IsSpotted = gameProcess.Process?.Read<bool>(AddressBase + Offsets.m_entitySpottedState + 0x8) ?? false;
         _spottedByMask = gameProcess.Process?.Read<ulong>(AddressBase + Offsets.m_entitySpottedState + Offsets.m_bSpottedByMask) ?? 0UL;
+        IsLocalPlayerController = Offsets.m_bIsLocalPlayerController > 0 &&
+                                  (gameProcess.Process?.Read<bool>(ControllerBase + Offsets.m_bIsLocalPlayerController) ?? false);
         IsInScope = gameProcess.Process?.Read<int>(AddressBase + Offsets.m_bIsScoped) ?? 0;
         FlashAlpha = gameProcess.Process?.Read<int>(AddressBase + Offsets.m_flFlashDuration) ?? 0;
         Name = gameProcess.Process != null
@@ -104,9 +107,10 @@ public class Entity : EntityBase
             return false;
         }
 
+        var previousBit = playerId > 0 ? 1UL << (playerId - 1) : 0UL;
         var zeroBasedBit = 1UL << playerId;
         var oneBasedBit = playerId < 63 ? 1UL << (playerId + 1) : 0UL;
-        return (_spottedByMask & (zeroBasedBit | oneBasedBit)) != 0;
+        return (_spottedByMask & (previousBit | zeroBasedBit | oneBasedBit)) != 0;
     }
 
 }

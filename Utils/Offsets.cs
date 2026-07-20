@@ -33,6 +33,7 @@ public abstract class Offsets
     public static int m_bDormant;
     public static int m_iShotsFired;
     public static int m_hPawn;
+    public static int m_bIsLocalPlayerController;
     public static int dwLocalPlayerController;
     public static int dwViewMatrix;
     public static int dwViewAngles;
@@ -186,6 +187,7 @@ public abstract class Offsets
             ["m_bDormant"] = sourceDataClient.clientdll.classes.CGameSceneNode.fields.m_bDormant,
             ["m_iShotsFired"] = sourceDataClient.clientdll.classes.C_CSPlayerPawn.fields.m_iShotsFired,
             ["m_hPawn"] = sourceDataClient.clientdll.classes.CBasePlayerController.fields.m_hPawn,
+            ["m_bIsLocalPlayerController"] = sourceDataClient.clientdll.classes.CBasePlayerController.fields.m_bIsLocalPlayerController,
             ["m_entitySpottedState"] = sourceDataClient.clientdll.classes.C_CSPlayerPawn.fields.m_entitySpottedState,
             ["m_bSpottedByMask"] = sourceDataClient.clientdll.classes.EntitySpottedState_t.fields.m_bSpottedByMask,
             ["m_Item"] = sourceDataClient.clientdll.classes.C_AttributeContainer.fields.m_Item,
@@ -251,6 +253,9 @@ public abstract class Offsets
         m_bDormant = data["m_bDormant"];
         m_iShotsFired = data["m_iShotsFired"];
         m_hPawn = data["m_hPawn"];
+        m_bIsLocalPlayerController = data.TryGetValue("m_bIsLocalPlayerController", out var isLocalPlayerController)
+            ? isLocalPlayerController
+            : 0;
         m_fFlags = data["m_fFlags"];
         dwLocalPlayerController = data["dwLocalPlayerController"];
         dwViewMatrix = data["dwViewMatrix"];

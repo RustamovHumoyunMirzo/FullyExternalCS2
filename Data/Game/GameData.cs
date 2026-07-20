@@ -49,7 +49,8 @@ public class GameData : ThreadedServiceBase
 
             LocalPlayerId = Player == null
                 ? -1
-                : Array.Find(Entities, entity => entity.AddressBase == Player.AddressBase)?.Id ?? -1;
+                : Array.Find(Entities, entity => entity.IsLocalPlayerController)?.Id ??
+                  Array.Find(Entities, entity => entity.AddressBase == Player.AddressBase)?.Id ?? -1;
         }
     }
 

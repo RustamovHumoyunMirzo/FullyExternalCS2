@@ -241,7 +241,7 @@ public class ConfigManager
         return new ConfigManager
         {
             AimBot = false,
-            AimOnlyVisible = true,
+            AimOnlyVisible = false,
             AimLockTarget = false,
             AimFovCircle = false,
             AimFov = 15f,
