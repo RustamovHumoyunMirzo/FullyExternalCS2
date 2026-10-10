@@ -24,6 +24,8 @@ public class OverlayRenderer : Overlay
     private readonly TriggerBot _triggerBot;
     private readonly AntiFlash _antiFlash;
     private readonly RadarHack _radarHack;
+    private readonly PlayerGlow _playerGlow;
+    private bool _glowKeyWasDown;
     private float _menuAlpha;
     private Vector2 _lastMenuPosition;
 
@@ -50,6 +52,7 @@ public class OverlayRenderer : Overlay
         _triggerBot = new TriggerBot(gp, gd);
         _antiFlash = new AntiFlash(gp, gd);
         _radarHack = new RadarHack(gp, gd);
+        _playerGlow = new PlayerGlow(gp, gd);
     }
 
     protected override Task PostInitialized()
@@ -70,6 +73,14 @@ public class OverlayRenderer : Overlay
             return;
         }
         _config = ConfigManager.Load();
+
+        var glowKeyDown = _config.GlowKey != Keys.None && _config.GlowKey.IsKeyDown();
+        if (glowKeyDown && !_glowKeyWasDown && _waitingForBind == null && _gameProcess.IsGameForeground)
+        {
+            _config.PlayerGlow = !_config.PlayerGlow;
+            ConfigManager.UpdateCache(_config);
+        }
+        _glowKeyWasDown = glowKeyDown;
 
         var mk = _config.MenuToggleKey;
         var mkd = mk.IsKeyDown();
@@ -311,6 +322,17 @@ public class OverlayRenderer : Overlay
 
     void TabVisuals()
     {
+        SectionHeader("Player Glow");
+        var glow = _config.PlayerGlow;
+        if (Toggle("Player Glow", ref glow))
+        { _config.PlayerGlow = glow; ConfigManager.UpdateCache(_config); }
+        DrawKeyBind("Glow Key", "GlowKey", _config.GlowKey);
+        var glowTeamCheck = _config.GlowTeamCheck;
+        if (Toggle("Glow Team Check", ref glowTeamCheck))
+        { _config.GlowTeamCheck = glowTeamCheck; ConfigManager.UpdateCache(_config); }
+        DrawGlowColor("T Color", true);
+        DrawGlowColor("CT Color", false);
+        ImGui.Spacing();
         SectionHeader("ESP");
         var espBox = _config.EspBox;
         if (Toggle("ESP Box", ref espBox)) { _config.EspBox = espBox; ConfigManager.UpdateCache(_config); }
@@ -433,6 +455,17 @@ public class OverlayRenderer : Overlay
         return false;
     }
 
+    void DrawGlowColor(string label, bool terrorist)
+    {
+        var values = terrorist ? _config.GlowTColor : _config.GlowCtColor;
+        var color = new Vector4(values[0], values[1], values[2], values[3]);
+        if (!ImGui.ColorEdit4(label, ref color)) return;
+        var updated = new[] { color.X, color.Y, color.Z, color.W };
+        if (terrorist) _config.GlowTColor = updated;
+        else _config.GlowCtColor = updated;
+        ConfigManager.UpdateCache(_config);
+    }
+
     void DrawKeyBind(string label, string bindId, Keys currentKey)
     {
         ImGui.PushID(bindId);
@@ -471,6 +504,7 @@ public class OverlayRenderer : Overlay
                         case "AimRcsKey": _config.AimRcsKey = k; break;
                         case "TriggerBotKey": _config.TriggerBotKey = k; break;
                         case "MenuToggleKey": _config.MenuToggleKey = k; break;
+                        case "GlowKey": _config.GlowKey = k; break;
                     }
                     ConfigManager.UpdateCache(_config);
                     _waitingForBind = null;
@@ -552,8 +586,8 @@ public class OverlayRenderer : Overlay
         }
     }
 
-    public void StartFeatures() { _bombTimer.Start(); _voteTeller.Start(); _triggerBot.Start(); _aimBot.Start(); _antiFlash.Start(); _radarHack.Start(); }
-    public void StopFeatures() { _bombTimer.Dispose(); _voteTeller.Dispose(); _triggerBot.Dispose(); _aimBot.Dispose(); _antiFlash.Dispose(); _radarHack.Dispose(); }
+    public void StartFeatures() { _bombTimer.Start(); _voteTeller.Start(); _triggerBot.Start(); _aimBot.Start(); _antiFlash.Start(); _radarHack.Start(); _playerGlow.Start(); }
+    public void StopFeatures() { _bombTimer.Dispose(); _voteTeller.Dispose(); _triggerBot.Dispose(); _aimBot.Dispose(); _antiFlash.Dispose(); _radarHack.Dispose(); _playerGlow.Dispose(); }
 
     public static uint ToColor(byte r, byte g, byte b, byte a = 255) =>
         ImGui.ColorConvertFloat4ToU32(new Vector4(r/255f, g/255f, b/255f, a/255f));

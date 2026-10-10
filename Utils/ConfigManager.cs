@@ -37,6 +37,13 @@ public class ConfigManager
     public bool TriggerBot { get; set; }
     public bool AntiFlash { get; set; }
     public bool RadarHack { get; set; }
+    public bool PlayerGlow { get; set; }
+    public bool GlowTeamCheck { get; set; } = true;
+    public float[] GlowTColor { get; set; } = [1f, 1f, 0f, 1f];
+    public float[] GlowCtColor { get; set; } = [0f, 0f, 1f, 1f];
+
+    [JsonConverter(typeof(KeysJsonConverter))]
+    public Keys GlowKey { get; set; } = Keys.F6;
 
     public float MenuPositionX { get; set; }
     public float MenuPositionY { get; set; }
@@ -162,6 +169,8 @@ public class ConfigManager
 
     private static void SanitizeKeys(ConfigManager config)
     {
+        config.GlowTColor = SanitizeColor(config.GlowTColor, [1f, 1f, 0f, 1f]);
+        config.GlowCtColor = SanitizeColor(config.GlowCtColor, [0f, 0f, 1f, 1f]);
         var defaults = Default();
         if (config.MenuToggleKey == Keys.None)
         {
@@ -217,6 +226,13 @@ public class ConfigManager
         {
             Console.WriteLine($"[WARN] Could not initialize config watcher: {ex.Message}");
         }
+    }
+
+    private static float[] SanitizeColor(float[]? color, float[] fallback)
+    {
+        if (color == null || color.Length != 4 || color.Any(value => !float.IsFinite(value)))
+            return fallback;
+        return color.Select(value => Math.Clamp(value, 0f, 1f)).ToArray();
     }
 
     public static void Save(ConfigManager options)

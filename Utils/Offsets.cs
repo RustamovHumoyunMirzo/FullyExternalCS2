@@ -39,6 +39,11 @@ public abstract class Offsets
     public static int dwViewAngles;
     public static int m_entitySpottedState;
     public static int m_bSpottedByMask;
+    public static int m_Glow;
+    public static int m_bGlowing;
+    public static int m_glowColorOverride;
+    public static int m_iGlowType;
+    public static int m_iGlowTeam;
     public static int m_Item;
     public static int m_pClippingWeapon;
     public static int m_AttributeManager;
@@ -190,6 +195,11 @@ public abstract class Offsets
             ["m_bIsLocalPlayerController"] = sourceDataClient.clientdll.classes.CBasePlayerController.fields.m_bIsLocalPlayerController,
             ["m_entitySpottedState"] = sourceDataClient.clientdll.classes.C_CSPlayerPawn.fields.m_entitySpottedState,
             ["m_bSpottedByMask"] = sourceDataClient.clientdll.classes.EntitySpottedState_t.fields.m_bSpottedByMask,
+            ["m_Glow"] = sourceDataClient.clientdll.classes.C_BaseModelEntity.fields.m_Glow,
+            ["m_bGlowing"] = sourceDataClient.clientdll.classes.CGlowProperty.fields.m_bGlowing,
+            ["m_glowColorOverride"] = sourceDataClient.clientdll.classes.CGlowProperty.fields.m_glowColorOverride,
+            ["m_iGlowType"] = sourceDataClient.clientdll.classes.CGlowProperty.fields.m_iGlowType,
+            ["m_iGlowTeam"] = sourceDataClient.clientdll.classes.CGlowProperty.fields.m_iGlowTeam,
             ["m_Item"] = sourceDataClient.clientdll.classes.C_AttributeContainer.fields.m_Item,
             ["m_pClippingWeapon"] = sourceDataClient.clientdll.classes.C_CSPlayerPawnBase.fields.m_pClippingWeapon,
             ["m_AttributeManager"] = sourceDataClient.clientdll.classes.C_EconEntity.fields.m_AttributeManager,
@@ -263,6 +273,11 @@ public abstract class Offsets
         dwEntityList = data["dwEntityList"];
         m_entitySpottedState = data["m_entitySpottedState"];
         m_bSpottedByMask = data.TryGetValue("m_bSpottedByMask", out var spottedByMask) ? spottedByMask : 0xC;
+        m_Glow = data.GetValueOrDefault("m_Glow");
+        m_bGlowing = data.GetValueOrDefault("m_bGlowing");
+        m_glowColorOverride = data.GetValueOrDefault("m_glowColorOverride");
+        m_iGlowType = data.GetValueOrDefault("m_iGlowType");
+        m_iGlowTeam = data.GetValueOrDefault("m_iGlowTeam");
         m_Item = data["m_Item"];
         m_pClippingWeapon = data["m_pClippingWeapon"];
         m_AttributeManager = data["m_AttributeManager"];
