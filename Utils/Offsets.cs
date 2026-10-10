@@ -44,6 +44,15 @@ public abstract class Offsets
     public static int m_glowColorOverride;
     public static int m_iGlowType;
     public static int m_iGlowTeam;
+    public static int m_nFallbackPaintKit;
+    public static int m_nFallbackSeed;
+    public static int m_flFallbackWear;
+    public static int m_nFallbackStatTrak;
+    public static int m_iItemIDHigh;
+    public static int m_szCustomName;
+    public static int m_pWeaponServices;
+    public static int m_hActiveWeapon;
+    public static int m_hOwnerEntity;
     public static int m_Item;
     public static int m_pClippingWeapon;
     public static int m_AttributeManager;
@@ -200,6 +209,15 @@ public abstract class Offsets
             ["m_glowColorOverride"] = sourceDataClient.clientdll.classes.CGlowProperty.fields.m_glowColorOverride,
             ["m_iGlowType"] = sourceDataClient.clientdll.classes.CGlowProperty.fields.m_iGlowType,
             ["m_iGlowTeam"] = sourceDataClient.clientdll.classes.CGlowProperty.fields.m_iGlowTeam,
+            ["m_nFallbackPaintKit"] = sourceDataClient.clientdll.classes.C_EconEntity.fields.m_nFallbackPaintKit,
+            ["m_nFallbackSeed"] = sourceDataClient.clientdll.classes.C_EconEntity.fields.m_nFallbackSeed,
+            ["m_flFallbackWear"] = sourceDataClient.clientdll.classes.C_EconEntity.fields.m_flFallbackWear,
+            ["m_nFallbackStatTrak"] = sourceDataClient.clientdll.classes.C_EconEntity.fields.m_nFallbackStatTrak,
+            ["m_iItemIDHigh"] = sourceDataClient.clientdll.classes.C_EconItemView.fields.m_iItemIDHigh,
+            ["m_szCustomName"] = sourceDataClient.clientdll.classes.C_EconItemView.fields.m_szCustomName,
+            ["m_pWeaponServices"] = sourceDataClient.clientdll.classes.C_BasePlayerPawn.fields.m_pWeaponServices,
+            ["m_hActiveWeapon"] = sourceDataClient.clientdll.classes.CPlayer_WeaponServices.fields.m_hActiveWeapon,
+            ["m_hOwnerEntity"] = sourceDataClient.clientdll.classes.C_BaseEntity.fields.m_hOwnerEntity,
             ["m_Item"] = sourceDataClient.clientdll.classes.C_AttributeContainer.fields.m_Item,
             ["m_pClippingWeapon"] = sourceDataClient.clientdll.classes.C_CSPlayerPawnBase.fields.m_pClippingWeapon,
             ["m_AttributeManager"] = sourceDataClient.clientdll.classes.C_EconEntity.fields.m_AttributeManager,
@@ -278,6 +296,15 @@ public abstract class Offsets
         m_glowColorOverride = data.GetValueOrDefault("m_glowColorOverride");
         m_iGlowType = data.GetValueOrDefault("m_iGlowType");
         m_iGlowTeam = data.GetValueOrDefault("m_iGlowTeam");
+        m_nFallbackPaintKit = data.GetValueOrDefault("m_nFallbackPaintKit");
+        m_nFallbackSeed = data.GetValueOrDefault("m_nFallbackSeed");
+        m_flFallbackWear = data.GetValueOrDefault("m_flFallbackWear");
+        m_nFallbackStatTrak = data.GetValueOrDefault("m_nFallbackStatTrak");
+        m_iItemIDHigh = data.GetValueOrDefault("m_iItemIDHigh");
+        m_szCustomName = data.GetValueOrDefault("m_szCustomName");
+        m_pWeaponServices = data.GetValueOrDefault("m_pWeaponServices");
+        m_hActiveWeapon = data.GetValueOrDefault("m_hActiveWeapon");
+        m_hOwnerEntity = data.GetValueOrDefault("m_hOwnerEntity");
         m_Item = data["m_Item"];
         m_pClippingWeapon = data["m_pClippingWeapon"];
         m_AttributeManager = data["m_AttributeManager"];

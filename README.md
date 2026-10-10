@@ -61,6 +61,26 @@ Default menu key: `Insert`
 - Team Check
 - Menu keybind
 
+### Skins tab (experimental)
+
+- Disabled by default; add/remove one configuration per firearm or existing knife definition.
+- New entries use stock paint kit ID `0`.
+- Configure paint kit ID, pattern seed, wear condition, exact wear, StatTrak, and name tag.
+- Pattern seed is the pattern index; there is no separate generic pattern field.
+- Save and reload entries through the Config tab.
+
+The external worker writes fallback cosmetic fields only on the local player's owned,
+active weapon. It restores saved fields when disabled, removed, or switched away,
+provided the weapon still belongs to the same local pawn. It does not modify inventory
+or make economy/network requests. Old offline offset caches disable the worker until
+an online refresh supplies its required offsets.
+
+This is not a complete skin changer. The renderer may ignore fallback fields without
+an engine material refresh, and visible results have not been verified in-game.
+Knife model replacement, glove creation/replacement, agents, stickers, charms, and
+material refresh are not implemented. Existing knife definitions can have fallback
+fields edited, but selecting a knife entry does not equip or replace a knife model.
+
 ### Config tab
 
 - Save Config

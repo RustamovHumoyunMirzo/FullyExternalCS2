@@ -1,4 +1,5 @@
 using System.IO;
+using CS2Cheat.Core.Data;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Keys = Process.NET.Native.Types.Keys;
@@ -38,6 +39,8 @@ public class ConfigManager
     public bool AntiFlash { get; set; }
     public bool RadarHack { get; set; }
     public bool PlayerGlow { get; set; }
+    public bool SkinChanger { get; set; }
+    public SkinEntry[] Skins { get; set; } = [];
     public bool GlowTeamCheck { get; set; } = true;
     public float[] GlowTColor { get; set; } = [1f, 1f, 0f, 1f];
     public float[] GlowCtColor { get; set; } = [0f, 0f, 1f, 1f];
@@ -169,6 +172,8 @@ public class ConfigManager
 
     private static void SanitizeKeys(ConfigManager config)
     {
+        config.Skins = (config.Skins ?? []).Where(entry => entry != null && SkinCatalog.Supports(entry.DefinitionIndex))
+            .DistinctBy(entry => entry.DefinitionIndex).Select(entry => entry.Sanitize()).ToArray();
         config.GlowTColor = SanitizeColor(config.GlowTColor, [1f, 1f, 0f, 1f]);
         config.GlowCtColor = SanitizeColor(config.GlowCtColor, [0f, 0f, 1f, 1f]);
         var defaults = Default();
