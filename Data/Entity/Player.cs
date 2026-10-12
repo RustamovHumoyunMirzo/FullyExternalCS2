@@ -1,4 +1,3 @@
-using System.Media;
 using System.Numerics;
 using CS2Cheat.Core.Data;
 using CS2Cheat.Data.Game;
@@ -22,7 +21,12 @@ public class Player : EntityBase
     public static int Fov => 90;
     public int FFlags { get; private set; }
 
-    private int PreviousTotalHits { get; set; }
+    private int _previousTotalHits;
+    private bool _totalHitsInitialized;
+    private Team _lastCrosshairTargetTeam = Team.Unknown;
+    private DateTime _lastCrosshairTargetTime;
+    public int HitSequence { get; private set; }
+    public Team LastHitTargetTeam { get; private set; } = Team.Unknown;
 
     protected override IntPtr ReadControllerBase(GameProcess gameProcess)
     {
@@ -67,28 +71,65 @@ public class Player : EntityBase
         );
 
 
-        try
-        {
-            var totalHits = gameProcess.Process.Read<int>
-            (
-                gameProcess.Process.Read<IntPtr>(AddressBase + 0x1518) + 0x40
-            );
-
-            if (totalHits != PreviousTotalHits && totalHits > 0)
-            {
-                using var player = new SoundPlayer("hit.wav");
-                player.Play();
-            }
-
-            PreviousTotalHits = totalHits;
-        }
-        catch (Exception)
-        {
-        }
+        ReadCrosshairTargetTeam(gameProcess);
+        UpdateHitCounter(gameProcess);
 
 
         return true;
     }
+
+    private void UpdateHitCounter(GameProcess gameProcess)
+    {
+        if (Offsets.m_pBulletServices <= 0 || Offsets.m_totalHitsOnServer <= 0 || gameProcess.Process == null)
+            return;
+
+        var services = gameProcess.Process.Read<IntPtr>(AddressBase + Offsets.m_pBulletServices);
+        if (services == IntPtr.Zero) return;
+
+        var totalHits = gameProcess.Process.Read<int>(services + Offsets.m_totalHitsOnServer);
+        if (!_totalHitsInitialized || totalHits < _previousTotalHits)
+        {
+            _previousTotalHits = totalHits;
+            _totalHitsInitialized = true;
+            return;
+        }
+
+        if (totalHits == _previousTotalHits) return;
+        HitSequence += totalHits - _previousTotalHits;
+        _previousTotalHits = totalHits;
+        LastHitTargetTeam = ReadCrosshairTargetTeam(gameProcess);
+    }
+
+    private Team ReadCrosshairTargetTeam(GameProcess gameProcess)
+    {
+        if (gameProcess.Process == null || Offsets.m_iIDEntIndex <= 0) return GetRecentCrosshairTeam();
+        var index = gameProcess.Process.Read<int>(AddressBase + Offsets.m_iIDEntIndex);
+        if (index >= 0 && index < 32768)
+        {
+            var listEntry = gameProcess.Process.Read<IntPtr>(EntityList + 16 + 8 * (index >> 9));
+            if (listEntry != IntPtr.Zero)
+            {
+                var target = gameProcess.Process.Read<IntPtr>(listEntry + 112 * (index & 0x1FF));
+                if (target != IntPtr.Zero)
+                {
+                    var team = gameProcess.Process.Read<int>(target + Offsets.m_iTeamNum).ToTeam();
+                    if (team is Team.Terrorists or Team.CounterTerrorists)
+                    {
+                        _lastCrosshairTargetTeam = team;
+                        _lastCrosshairTargetTime = DateTime.UtcNow;
+                        return team;
+                    }
+                }
+            }
+        }
+
+        return GetRecentCrosshairTeam();
+    }
+
+    private Team GetRecentCrosshairTeam() =>
+        DateTime.UtcNow - _lastCrosshairTargetTime <= TimeSpan.FromMilliseconds(250)
+            ? _lastCrosshairTargetTeam
+            : Team.Unknown;
 
     private Vector3 ReadAimPunchAngle(GameProcess gameProcess)
     {

@@ -61,25 +61,12 @@ Default menu key: `Insert`
 - Team Check
 - Menu keybind
 
-### Skins tab (experimental)
+### Hit feedback
 
-- Disabled by default; add/remove one configuration per firearm or existing knife definition.
-- New entries use stock paint kit ID `0`.
-- Configure paint kit ID, pattern seed, wear condition, exact wear, StatTrak, and name tag.
-- Pattern seed is the pattern index; there is no separate generic pattern field.
-- Save and reload entries through the Config tab.
-
-The external worker writes fallback cosmetic fields only on the local player's owned,
-active weapon. It restores saved fields when disabled, removed, or switched away,
-provided the weapon still belongs to the same local pawn. It does not modify inventory
-or make economy/network requests. Old offline offset caches disable the worker until
-an online refresh supplies its required offsets.
-
-This is not a complete skin changer. The renderer may ignore fallback fields without
-an engine material refresh, and visible results have not been verified in-game.
-Knife model replacement, glove creation/replacement, agents, stickers, charms, and
-material refresh are not implemented. Existing knife definitions can have fallback
-fields edited, but selecting a knife entry does not equip or replace a knife model.
+- A short four stroke hit marker appears around the screen center after a registered hit.
+- `assets/hitsound.mp3` plays on registered hits.
+- Both use the Misc tab's Team Check. With it enabled, feedback is limited to hits
+  whose crosshair target team was identified as an opponent.
 
 ### Config tab
 
@@ -190,9 +177,16 @@ cd FullyExternalCS2
 
 ## Starting the program
 
+Run with no arguments to keep the normal online/cache offset update. Run with `-fresh`
+to wait for `cs2.exe`, launch the bundled `assets/cs2-dumper.exe`, write JSON output
+under `assets/offsets_output`, and import validated offsets into the same `cache/offsets.json`
+used by normal startup. If Windows denies access to CS2, close the program and relaunch
+it with **Run as administrator**. A failed refresh falls back to the normal offset flow.
+
 ```bash
 dotnet build
 dotnet run
+dotnet run -- -fresh
 ```
 
 ## Notes

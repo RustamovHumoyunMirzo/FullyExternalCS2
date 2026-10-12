@@ -21,7 +21,7 @@ public sealed class PlayerGlow : ThreadedServiceBase
     }
 
     protected override string ThreadName => nameof(PlayerGlow);
-    protected override TimeSpan ThreadFrameSleep { get; set; } = TimeSpan.FromMilliseconds(20);
+    protected override TimeSpan ThreadFrameSleep { get; set; } = TimeSpan.FromMilliseconds(75);
 
     protected override void FrameAction()
     {
@@ -86,7 +86,19 @@ public sealed class PlayerGlow : ThreadedServiceBase
     private void Write(IntPtr address, byte[] bytes)
     {
         if (_gameProcess.Process != null)
-            Kernel32.WriteMemory(_gameProcess.Process.Handle, address, bytes);
+        {
+            var changed = false;
+            for (var index = 0; index < bytes.Length; index++)
+            {
+                if (_gameProcess.Process.Read<byte>(address + index) == bytes[index]) continue;
+                changed = true;
+                break;
+            }
+            if (!changed) return;
+
+            if (!Kernel32.WriteMemory(_gameProcess.Process.Handle, address, bytes))
+                throw new InvalidOperationException($"Glow write failed (Win32 error {System.Runtime.InteropServices.Marshal.GetLastWin32Error()}).");
+        }
     }
 
     private void Restore(IntPtr pawn)

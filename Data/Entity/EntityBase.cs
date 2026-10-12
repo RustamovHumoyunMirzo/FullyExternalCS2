@@ -11,7 +11,7 @@ public abstract class EntityBase
     protected IntPtr ControllerBase { get; private set; }
     public IntPtr AddressBase { get; private set; }
 
-    private bool LifeState { get; set; }
+    private byte LifeState { get; set; } = byte.MaxValue;
     public int Health { get; private set; }
     public Team Team { get; private set; }
     protected Vector3 Origin { get; private set; }
@@ -29,7 +29,7 @@ public abstract class EntityBase
     {
         return ControllerBase != IntPtr.Zero &&
                AddressBase != IntPtr.Zero &&
-               LifeState &&
+               LifeState == 0 &&
                Health > 0 &&
                Team is Team.Terrorists or Team.CounterTerrorists;
     }
@@ -49,7 +49,7 @@ public abstract class EntityBase
         if (gameProcess.Process == null)
             throw new ArgumentNullException(nameof(gameProcess.Process), "Process cannot be null.");
 
-        LifeState = gameProcess.Process.Read<bool>(AddressBase + Offsets.m_lifeState);
+        LifeState = gameProcess.Process.Read<byte>(AddressBase + Offsets.m_lifeState);
         Health = gameProcess.Process.Read<int>(AddressBase + Offsets.m_iHealth);
         Team = gameProcess.Process.Read<int>(AddressBase + Offsets.m_iTeamNum).ToTeam();
         Origin = gameProcess.Process.Read<Vector3>(AddressBase + Offsets.m_vOldOrigin);
@@ -69,6 +69,18 @@ public abstract class EntityBase
     private IntPtr ReadCurrentWeapon(GameProcess gameProcess)
     {
         if (gameProcess.Process == null) return IntPtr.Zero;
+
+        if (Offsets.m_pWeaponServices > 0 && Offsets.m_hActiveWeapon > 0)
+        {
+            var services = gameProcess.Process.Read<IntPtr>(AddressBase + Offsets.m_pWeaponServices);
+            if (services != IntPtr.Zero)
+            {
+                var handle = gameProcess.Process.Read<int>(services + Offsets.m_hActiveWeapon);
+                var activeWeapon = ReadEntityFromHandle(gameProcess, handle);
+                if (IsValidWeaponIndex(gameProcess, activeWeapon)) return activeWeapon;
+            }
+        }
+        if (Offsets.m_pClippingWeapon <= 0) return IntPtr.Zero;
 
         var directWeapon = gameProcess.Process.Read<IntPtr>(AddressBase + Offsets.m_pClippingWeapon);
         if (IsValidWeaponIndex(gameProcess, directWeapon)) return directWeapon;

@@ -63,7 +63,9 @@ public class Entity : EntityBase
     {
         if (!base.Update(gameProcess)) return false;
 
-        _dormant = gameProcess.Process != null && gameProcess.Process.Read<bool>(AddressBase + Offsets.m_bDormant);
+        var sceneNode = gameProcess.Process?.Read<IntPtr>(AddressBase + Offsets.m_pGameSceneNode) ?? IntPtr.Zero;
+        _dormant = sceneNode == IntPtr.Zero || gameProcess.Process == null ||
+                   gameProcess.Process.Read<byte>(sceneNode + Offsets.m_bDormant) != 0;
         IsSpotted = gameProcess.Process?.Read<bool>(AddressBase + Offsets.m_entitySpottedState + 0x8) ?? false;
         _spottedByMask = gameProcess.Process?.Read<ulong>(AddressBase + Offsets.m_entitySpottedState + Offsets.m_bSpottedByMask) ?? 0UL;
         IsLocalPlayerController = Offsets.m_bIsLocalPlayerController > 0 &&

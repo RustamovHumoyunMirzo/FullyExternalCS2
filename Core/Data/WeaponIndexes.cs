@@ -1,4 +1,4 @@
-﻿namespace CS2Cheat.Core.Data;
+namespace CS2Cheat.Core.Data;
 
 public enum WeaponIndexes
 {
@@ -65,7 +65,6 @@ public enum WeaponIndexes
     Snowball,
     Bumpmine,
     Bayonet = 500,
-    KnifeClassic = 503,
     KnifeFlip = 505,
     KNIFE_GUT,
     KNIFE_KARAMBIT,
@@ -75,15 +74,10 @@ public enum WeaponIndexes
     KNIFE_SURVIVAL_BOWIE = 514,
     KNIFE_BUTTERFLY,
     KNIFE_PUSH,
-    KnifeParacord = 517,
-    KnifeSurvival = 518,
     KNIFE_URSUS = 519,
     KNIFE_GYPSY_JACKKNIFE,
-    KnifeNomad = 521,
     KNIFE_STILETTO = 522,
     KNIFE_WIDOWMAKER,
-    KnifeSkeleton = 525,
-    KnifeKukri = 526,
     GLOVE_STUDDED_BLOODHOUND = 5027,
     GLOVE_T_SIDE = 5028,
     GLOVE_CT_SIDE = 5029,

@@ -26,9 +26,10 @@ public class OverlayRenderer : Overlay
     private readonly AntiFlash _antiFlash;
     private readonly RadarHack _radarHack;
     private readonly PlayerGlow _playerGlow;
-    private readonly SkinChanger _skinChanger;
-    private int _skinCatalogIndex;
+    private readonly HitSoundPlayer _hitSoundPlayer;
     private bool _glowKeyWasDown;
+    private int _lastHitSequence = -1;
+    private DateTime _hitMarkerUntil;
     private float _menuAlpha;
     private Vector2 _lastMenuPosition;
 
@@ -43,7 +44,7 @@ public class OverlayRenderer : Overlay
     static readonly Vector4 ColItemActive = new(0.12f, 0.13f, 0.17f, 1f);
     static readonly Vector4 ColBorder = new(0.18f, 0.20f, 0.25f, 0.5f);
 
-    static readonly string[] TabNames = { "\u2022 Aimbot", "\u2022 Visuals", "\u2022 Misc", "\u2022 Skins", "\u2022 Config" };
+    static readonly string[] TabNames = { "\u2022 Aimbot", "\u2022 Visuals", "\u2022 Misc", "\u2022 Config" };
 
     public OverlayRenderer(GameProcess gp, GameData gd) : base(true)
     {
@@ -56,7 +57,7 @@ public class OverlayRenderer : Overlay
         _antiFlash = new AntiFlash(gp, gd);
         _radarHack = new RadarHack(gp, gd);
         _playerGlow = new PlayerGlow(gp, gd);
-        _skinChanger = new SkinChanger(gp, gd);
+        _hitSoundPlayer = new HitSoundPlayer(Path.Combine(AppContext.BaseDirectory, "assets", "hitsound.mp3"));
     }
 
     protected override Task PostInitialized()
@@ -77,6 +78,7 @@ public class OverlayRenderer : Overlay
             return;
         }
         _config = ConfigManager.Load();
+        UpdateHitFeedback();
 
         var glowKeyDown = _config.GlowKey != Keys.None && _config.GlowKey.IsKeyDown();
         if (glowKeyDown && !_glowKeyWasDown && _waitingForBind == null && _gameProcess.IsGameForeground)
@@ -118,6 +120,7 @@ public class OverlayRenderer : Overlay
 
         var dl = ImGui.GetBackgroundDrawList();
         RenderVisuals(dl);
+        RenderHitMarker(dl);
         dl.AddText(new Vector2(5, 5), Colors.White, $"{ImGui.GetIO().Framerate:0} FPS");
     }
 
@@ -203,8 +206,7 @@ public class OverlayRenderer : Overlay
             case 0: TabAimbot(); break;
             case 1: TabVisuals(); break;
             case 2: TabMisc(); break;
-            case 3: TabSkins(); break;
-            case 4: TabConfig(); break;
+            case 3: TabConfig(); break;
         }
 
         ImGui.EndChild();
@@ -416,76 +418,6 @@ public class OverlayRenderer : Overlay
         }
     }
 
-    void TabSkins()
-    {
-        SectionHeader("Skins");
-        var enabled = _config.SkinChanger;
-        if (Toggle("Skin Changer", ref enabled))
-        { _config.SkinChanger = enabled; ConfigManager.UpdateCache(_config); }
-
-        var names = SkinCatalog.Weapons.Select(weapon => SkinCatalog.Name((int)weapon)).ToArray();
-        ImGui.SetNextItemWidth(-1);
-        ImGui.Combo("##weapon", ref _skinCatalogIndex, names, names.Length);
-        var definition = (int)SkinCatalog.Weapons[_skinCatalogIndex];
-        var exists = _config.Skins.Any(entry => entry.DefinitionIndex == definition);
-        ImGui.BeginDisabled(exists);
-        if (ImGui.Button("+ Add Weapon"))
-        {
-            _config.Skins = [.. _config.Skins, new SkinEntry { DefinitionIndex = definition }];
-            ConfigManager.UpdateCache(_config);
-        }
-        ImGui.EndDisabled();
-
-        foreach (var entry in _config.Skins)
-        {
-            ImGui.PushID(entry.DefinitionIndex);
-            ImGui.Separator();
-            var open = ImGui.CollapsingHeader(SkinCatalog.Name(entry.DefinitionIndex));
-            if (open)
-            {
-                var updated = entry;
-                var entryEnabled = entry.Enabled;
-                if (Toggle("Enabled", ref entryEnabled)) updated = updated with { Enabled = entryEnabled };
-                var paint = entry.PaintKit;
-                ImGui.SetNextItemWidth(140);
-                if (ImGui.InputInt("Paint Kit ID", ref paint)) updated = updated with { PaintKit = paint };
-                var seed = entry.PatternSeed;
-                ImGui.SetNextItemWidth(140);
-                if (ImGui.InputInt("Pattern Seed", ref seed)) updated = updated with { PatternSeed = seed };
-                var category = SkinCatalog.WearCategory(entry.Wear);
-                ImGui.SetNextItemWidth(140);
-                if (ImGui.Combo("Condition", ref category, SkinCatalog.WearNames, SkinCatalog.WearNames.Length))
-                    updated = updated with { Wear = SkinCatalog.WearDefaults[category] };
-                var wear = entry.Wear;
-                ImGui.SetNextItemWidth(140);
-                if (ImGui.SliderFloat("Wear", ref wear, 0f, 1f, "%.4f")) updated = updated with { Wear = wear };
-                var statTrakEnabled = entry.StatTrak >= 0;
-                if (Toggle("StatTrak", ref statTrakEnabled)) updated = updated with { StatTrak = statTrakEnabled ? 0 : -1 };
-                if (statTrakEnabled)
-                {
-                    var count = Math.Max(0, entry.StatTrak);
-                    ImGui.SetNextItemWidth(140);
-                    if (ImGui.InputInt("Kills", ref count)) updated = updated with { StatTrak = Math.Max(0, count) };
-                }
-                var name = entry.CustomName;
-                ImGui.SetNextItemWidth(140);
-                if (ImGui.InputText("Name Tag", ref name, 160)) updated = updated with { CustomName = name };
-                if (updated != entry)
-                {
-                    _config.Skins = _config.Skins.Select(item => item.DefinitionIndex == entry.DefinitionIndex
-                        ? updated.Sanitize() : item).ToArray();
-                    ConfigManager.UpdateCache(_config);
-                }
-                if (ImGui.Button("- Remove"))
-                {
-                    _config.Skins = _config.Skins.Where(item => item.DefinitionIndex != entry.DefinitionIndex).ToArray();
-                    ConfigManager.UpdateCache(_config);
-                }
-            }
-            ImGui.PopID();
-        }
-    }
-
     void TabConfig()
     {
         SectionHeader("Configuration");
@@ -661,8 +593,42 @@ public class OverlayRenderer : Overlay
         }
     }
 
-    public void StartFeatures() { _bombTimer.Start(); _voteTeller.Start(); _triggerBot.Start(); _aimBot.Start(); _antiFlash.Start(); _radarHack.Start(); _playerGlow.Start(); _skinChanger.Start(); }
-    public void StopFeatures() { _bombTimer.Dispose(); _voteTeller.Dispose(); _triggerBot.Dispose(); _aimBot.Dispose(); _antiFlash.Dispose(); _radarHack.Dispose(); _playerGlow.Dispose(); _skinChanger.Dispose(); }
+    private void UpdateHitFeedback()
+    {
+        var player = _gameData.Player;
+        if (player == null) return;
+        if (_lastHitSequence < 0)
+        {
+            _lastHitSequence = player.HitSequence;
+            return;
+        }
+
+        if (player.HitSequence == _lastHitSequence) return;
+        _lastHitSequence = player.HitSequence;
+        if (_config.TeamCheck && player.LastHitTargetTeam == Team.Unknown) return;
+        if (_config.TeamCheck && player.LastHitTargetTeam == player.Team) return;
+
+        _hitMarkerUntil = DateTime.UtcNow.AddMilliseconds(220);
+        _hitSoundPlayer.Play();
+    }
+
+    private void RenderHitMarker(ImDrawListPtr drawList)
+    {
+        var remaining = (_hitMarkerUntil - DateTime.UtcNow).TotalMilliseconds / 220.0;
+        if (remaining <= 0) return;
+
+        var center = ImGui.GetIO().DisplaySize * 0.5f;
+        var color = ImGui.GetColorU32(new Vector4(1f, 1f, 1f, (float)Math.Clamp(remaining, 0, 1)));
+        const float outer = 12f;
+        const float inner = 6f;
+        drawList.AddLine(center + new Vector2(-outer, -outer), center + new Vector2(-inner, -inner), color, 2f);
+        drawList.AddLine(center + new Vector2(outer, -outer), center + new Vector2(inner, -inner), color, 2f);
+        drawList.AddLine(center + new Vector2(-outer, outer), center + new Vector2(-inner, inner), color, 2f);
+        drawList.AddLine(center + new Vector2(outer, outer), center + new Vector2(inner, inner), color, 2f);
+    }
+
+    public void StartFeatures() { _bombTimer.Start(); _voteTeller.Start(); _triggerBot.Start(); _aimBot.Start(); _antiFlash.Start(); _radarHack.Start(); _playerGlow.Start(); }
+    public void StopFeatures() { _bombTimer.Dispose(); _voteTeller.Dispose(); _triggerBot.Dispose(); _aimBot.Dispose(); _antiFlash.Dispose(); _radarHack.Dispose(); _playerGlow.Dispose(); _hitSoundPlayer.Dispose(); }
 
     public static uint ToColor(byte r, byte g, byte b, byte a = 255) =>
         ImGui.ColorConvertFloat4ToU32(new Vector4(r/255f, g/255f, b/255f, a/255f));

@@ -328,13 +328,15 @@ public static class Utility
     private static T Read<T>(IntPtr hProcess, IntPtr lpBaseAddress)
         where T : unmanaged
     {
-        var size = Marshal.SizeOf<T>();
+        // Native game booleans occupy one byte, unlike marshalled Win32 BOOLs.
+        var size = typeof(T) == typeof(bool) ? 1 : Marshal.SizeOf<T>();
         var buffer = new byte[size];
         var handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
         try
         {
             if (Kernel32.ReadMemory(hProcess, lpBaseAddress, handle.AddrOfPinnedObject(), size))
             {
+                if (typeof(T) == typeof(bool)) return (T)(object)(buffer[0] != 0);
                 return Marshal.PtrToStructure<T>(handle.AddrOfPinnedObject());
             }
         }

@@ -29,4 +29,9 @@
         <PackageReference Include="Process.NET" Version="1.0.2"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <Content Include="assets\cs2-dumper.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+        <Content Include="assets\hitsound.mp3" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+
 </Project>

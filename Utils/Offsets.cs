@@ -2,6 +2,7 @@ using System.Net.Http;
 using CS2Cheat.DTO.ClientDllDTO;
 using CS2Cheat.Utils.DTO;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace CS2Cheat.Utils;
 
@@ -44,15 +45,10 @@ public abstract class Offsets
     public static int m_glowColorOverride;
     public static int m_iGlowType;
     public static int m_iGlowTeam;
-    public static int m_nFallbackPaintKit;
-    public static int m_nFallbackSeed;
-    public static int m_flFallbackWear;
-    public static int m_nFallbackStatTrak;
-    public static int m_iItemIDHigh;
-    public static int m_szCustomName;
     public static int m_pWeaponServices;
     public static int m_hActiveWeapon;
-    public static int m_hOwnerEntity;
+    public static int m_pBulletServices;
+    public static int m_totalHitsOnServer;
     public static int m_Item;
     public static int m_pClippingWeapon;
     public static int m_AttributeManager;
@@ -103,7 +99,7 @@ public abstract class Offsets
                     var data = await DownloadOffsets();
                     SaveCache(data);
                     UpdateStaticFields(data);
-                    Console.WriteLine("[INFO] Offsets downloaded and cached.");
+                    Console.WriteLine($"[INFO] Downloaded and validated {data.Count} offset entries. Cache: {Path.GetFullPath(CacheFile)}");
                     return true;
                 }
                 catch (Exception ex)
@@ -158,14 +154,51 @@ public abstract class Offsets
         }
     }
 
-    private static async Task<Dictionary<string, int>> DownloadOffsets()
+    private static async Task<Dictionary<string, int>> DownloadOffsets(string? outputDirectory = null)
     {
-        var sourceDataDw = JsonConvert.DeserializeObject<OffsetsDTO>(await FetchJson(OffsetsUrl)) ??
+        var offsetsJson = outputDirectory == null
+            ? await FetchJson(OffsetsUrl)
+            : await File.ReadAllTextAsync(Path.Combine(outputDirectory, "offsets.json"));
+        var clientJson = outputDirectory == null
+            ? await FetchJson(ClientDllUrl)
+            : await File.ReadAllTextAsync(Path.Combine(outputDirectory, "client_dll.json"));
+        var sourceDataDw = JsonConvert.DeserializeObject<OffsetsDTO>(offsetsJson) ??
                            throw new InvalidOperationException("offsets.json is empty.");
-        var sourceDataClient = JsonConvert.DeserializeObject<ClientDllDTO>(await FetchJson(ClientDllUrl)) ??
+        var sourceDataClient = JsonConvert.DeserializeObject<ClientDllDTO>(clientJson) ??
                                throw new InvalidOperationException("client_dll.json is empty.");
 
-        return BuildOffsetMap(sourceDataDw, sourceDataClient);
+        var data = BuildOffsetMap(sourceDataDw, sourceDataClient);
+        var classes = JObject.Parse(clientJson)["client.dll"]?["classes"] ??
+                      throw new InvalidOperationException("client_dll.json has no client.dll classes.");
+        data["m_bIsScoped"] = classes["C_CSPlayerPawn"]?["fields"]?["m_bIsScoped"]?.Value<int>() ??
+                              throw new InvalidOperationException("Missing C_CSPlayerPawn.m_bIsScoped.");
+        data["m_pBulletServices"] = classes["C_CSPlayerPawn"]?["fields"]?["m_pBulletServices"]?.Value<int>() ??
+                                    throw new InvalidOperationException("Missing C_CSPlayerPawn.m_pBulletServices.");
+        data["m_totalHitsOnServer"] = classes["CCSPlayer_BulletServices"]?["fields"]?["m_totalHitsOnServer"]?.Value<int>() ??
+                                      throw new InvalidOperationException("Missing CCSPlayer_BulletServices.m_totalHitsOnServer.");
+        ValidateOffsetMap(data);
+        var optionalMissing = new[] { "m_aimPunchAngle", "m_aimPunchCache", "m_pClippingWeapon" }
+            .Where(key => data.GetValueOrDefault(key) == 0).ToArray();
+        if (optionalMissing.Length > 0)
+            Console.WriteLine($"[INFO] Legacy fields absent; service fallbacks will be used: {string.Join(", ", optionalMissing)}");
+        return data;
+    }
+
+    public static bool LoadOffsetsFromDirectory(string outputDirectory)
+    {
+        try
+        {
+            var data = DownloadOffsets(outputDirectory).GetAwaiter().GetResult();
+            SaveCache(data);
+            UpdateStaticFields(data);
+            Console.WriteLine($"[INFO] Fresh offsets loaded and saved to the shared cache: {Path.GetFullPath(CacheFile)}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] Fresh offset import failed: {ex.Message}");
+            return false;
+        }
     }
 
     private static async Task<string> FetchJson(string url)
@@ -209,15 +242,8 @@ public abstract class Offsets
             ["m_glowColorOverride"] = sourceDataClient.clientdll.classes.CGlowProperty.fields.m_glowColorOverride,
             ["m_iGlowType"] = sourceDataClient.clientdll.classes.CGlowProperty.fields.m_iGlowType,
             ["m_iGlowTeam"] = sourceDataClient.clientdll.classes.CGlowProperty.fields.m_iGlowTeam,
-            ["m_nFallbackPaintKit"] = sourceDataClient.clientdll.classes.C_EconEntity.fields.m_nFallbackPaintKit,
-            ["m_nFallbackSeed"] = sourceDataClient.clientdll.classes.C_EconEntity.fields.m_nFallbackSeed,
-            ["m_flFallbackWear"] = sourceDataClient.clientdll.classes.C_EconEntity.fields.m_flFallbackWear,
-            ["m_nFallbackStatTrak"] = sourceDataClient.clientdll.classes.C_EconEntity.fields.m_nFallbackStatTrak,
-            ["m_iItemIDHigh"] = sourceDataClient.clientdll.classes.C_EconItemView.fields.m_iItemIDHigh,
-            ["m_szCustomName"] = sourceDataClient.clientdll.classes.C_EconItemView.fields.m_szCustomName,
             ["m_pWeaponServices"] = sourceDataClient.clientdll.classes.C_BasePlayerPawn.fields.m_pWeaponServices,
             ["m_hActiveWeapon"] = sourceDataClient.clientdll.classes.CPlayer_WeaponServices.fields.m_hActiveWeapon,
-            ["m_hOwnerEntity"] = sourceDataClient.clientdll.classes.C_BaseEntity.fields.m_hOwnerEntity,
             ["m_Item"] = sourceDataClient.clientdll.classes.C_AttributeContainer.fields.m_Item,
             ["m_pClippingWeapon"] = sourceDataClient.clientdll.classes.C_CSPlayerPawnBase.fields.m_pClippingWeapon,
             ["m_AttributeManager"] = sourceDataClient.clientdll.classes.C_EconEntity.fields.m_AttributeManager,
@@ -254,13 +280,27 @@ public abstract class Offsets
 
             var json = File.ReadAllText(CacheFile);
             data = JsonConvert.DeserializeObject<Dictionary<string, int>>(json) ?? new Dictionary<string, int>();
-            return data.Count > 0;
+            ValidateOffsetMap(data);
+            return true;
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[WARN] Could not load offset cache: {ex.Message}");
             return false;
         }
+    }
+
+    private static void ValidateOffsetMap(IReadOnlyDictionary<string, int> data)
+    {
+        var required = new[] { "dwLocalPlayerPawn", "dwLocalPlayerController", "dwEntityList", "dwViewMatrix",
+            "dwViewAngles", "m_iHealth", "m_lifeState", "m_iTeamNum", "m_hPawn", "m_pGameSceneNode",
+            "m_modelState", "m_bDormant", "m_vOldOrigin", "m_vecViewOffset", "m_AttributeManager",
+            "m_Item", "m_iItemDefinitionIndex", "m_bIsScoped", "m_pWeaponServices", "m_hActiveWeapon",
+            "m_pBulletServices", "m_totalHitsOnServer",
+            "m_Glow", "m_bGlowing", "m_glowColorOverride", "m_iGlowType", "m_iGlowTeam" };
+        var invalid = required.Where(key => !data.TryGetValue(key, out var value) || value <= 0).ToArray();
+        if (invalid.Length > 0)
+            throw new InvalidOperationException($"Missing or invalid required offsets: {string.Join(", ", invalid)}");
     }
 
     private static void UpdateStaticFields(IReadOnlyDictionary<string, int> data)
@@ -296,15 +336,10 @@ public abstract class Offsets
         m_glowColorOverride = data.GetValueOrDefault("m_glowColorOverride");
         m_iGlowType = data.GetValueOrDefault("m_iGlowType");
         m_iGlowTeam = data.GetValueOrDefault("m_iGlowTeam");
-        m_nFallbackPaintKit = data.GetValueOrDefault("m_nFallbackPaintKit");
-        m_nFallbackSeed = data.GetValueOrDefault("m_nFallbackSeed");
-        m_flFallbackWear = data.GetValueOrDefault("m_flFallbackWear");
-        m_nFallbackStatTrak = data.GetValueOrDefault("m_nFallbackStatTrak");
-        m_iItemIDHigh = data.GetValueOrDefault("m_iItemIDHigh");
-        m_szCustomName = data.GetValueOrDefault("m_szCustomName");
         m_pWeaponServices = data.GetValueOrDefault("m_pWeaponServices");
         m_hActiveWeapon = data.GetValueOrDefault("m_hActiveWeapon");
-        m_hOwnerEntity = data.GetValueOrDefault("m_hOwnerEntity");
+        m_pBulletServices = data.GetValueOrDefault("m_pBulletServices");
+        m_totalHitsOnServer = data.GetValueOrDefault("m_totalHitsOnServer");
         m_Item = data["m_Item"];
         m_pClippingWeapon = data["m_pClippingWeapon"];
         m_AttributeManager = data["m_AttributeManager"];
