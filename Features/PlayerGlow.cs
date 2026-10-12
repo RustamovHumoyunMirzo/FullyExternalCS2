@@ -47,7 +47,7 @@ public sealed class PlayerGlow : ThreadedServiceBase
             var pawn = entity.AddressBase;
             if (pawn == IntPtr.Zero || !seen.Add(pawn)) continue;
             var enabled = config.PlayerGlow && player != null && pawn != player.AddressBase &&
-                          entity.IsAlive() && (!config.GlowTeamCheck || entity.Team != player.Team);
+                          entity.IsAliveIgnoringDormancy() && (!config.GlowTeamCheck || entity.Team != player.Team);
             var glow = pawn + Offsets.m_Glow;
             if (!enabled)
             {

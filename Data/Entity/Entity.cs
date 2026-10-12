@@ -33,6 +33,8 @@ public class Entity : EntityBase
         return base.IsAlive() && !_dormant;
     }
 
+    public bool IsAliveIgnoringDormancy() => base.IsAlive();
+
     protected override IntPtr ReadControllerBase(GameProcess gameProcess)
     {
         var entryIndex = (Id & 0x7FFF) >> 9;
@@ -106,12 +108,14 @@ public class Entity : EntityBase
 
     public bool IsSpottedBy(int playerId)
     {
-        if (playerId < 0 || playerId >= 64)
+        // Spotted-mask bits are indexed by the 1-based player entity ID minus one.
+        var bitIndex = playerId - 1;
+        if (bitIndex < 0 || bitIndex >= 64)
         {
             return false;
         }
 
-        return (_spottedByMask & (1UL << playerId)) != 0;
+        return (_spottedByMask & (1UL << bitIndex)) != 0;
     }
 
 }
