@@ -23,6 +23,9 @@ public class ConfigManager
     public bool BombTimer { get; set; }
     public bool VoteTeller { get; set; }
     public bool TeamCheck { get; set; }
+    public bool HitMarker { get; set; }
+    public bool HitSound { get; set; }
+    public bool HitFeedbackTeamCheck { get; set; } = true;
 
     public bool AimBot { get; set; }
     public bool AimOnlyVisible { get; set; }

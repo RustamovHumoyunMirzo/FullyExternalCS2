@@ -1,3 +1,4 @@
+using System.IO;
 using System.Net.Http;
 using CS2Cheat.DTO.ClientDllDTO;
 using CS2Cheat.Utils.DTO;

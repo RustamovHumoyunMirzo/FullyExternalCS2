@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.IO;
 using ClickableTransparentOverlay;
 using CS2Cheat.Core;
 using CS2Cheat.Core.Data;
@@ -410,6 +411,15 @@ public class OverlayRenderer : Overlay
         }
 
         ImGui.Spacing();
+        SectionHeader("Hit Feedback");
+        var hitMarker = _config.HitMarker;
+        if (Toggle("Hit Marker", ref hitMarker)) _config.HitMarker = hitMarker;
+        var hitSound = _config.HitSound;
+        if (Toggle("Hit Sound", ref hitSound)) _config.HitSound = hitSound;
+        var hitTeamCheck = _config.HitFeedbackTeamCheck;
+        if (Toggle("Hit Feedback Team Check", ref hitTeamCheck)) _config.HitFeedbackTeamCheck = hitTeamCheck;
+
+        ImGui.Spacing();
         SectionHeader("Radar");
         var radarHack = _config.RadarHack;
         if (Toggle("Radar Hack", ref radarHack))
@@ -605,11 +615,11 @@ public class OverlayRenderer : Overlay
 
         if (player.HitSequence == _lastHitSequence) return;
         _lastHitSequence = player.HitSequence;
-        if (_config.TeamCheck && player.LastHitTargetTeam == Team.Unknown) return;
-        if (_config.TeamCheck && player.LastHitTargetTeam == player.Team) return;
+        if (_config.HitFeedbackTeamCheck && player.LastHitTargetTeam == Team.Unknown) return;
+        if (_config.HitFeedbackTeamCheck && player.LastHitTargetTeam == player.Team) return;
 
-        _hitMarkerUntil = DateTime.UtcNow.AddMilliseconds(220);
-        _hitSoundPlayer.Play();
+        if (_config.HitMarker) _hitMarkerUntil = DateTime.UtcNow.AddMilliseconds(220);
+        if (_config.HitSound) _hitSoundPlayer.Play();
     }
 
     private void RenderHitMarker(ImDrawListPtr drawList)

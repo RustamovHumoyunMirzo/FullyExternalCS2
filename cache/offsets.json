@@ -31,15 +31,8 @@
   "m_glowColorOverride": 64,
   "m_iGlowType": 48,
   "m_iGlowTeam": 52,
-  "m_nFallbackPaintKit": 6312,
-  "m_nFallbackSeed": 6316,
-  "m_flFallbackWear": 6320,
-  "m_nFallbackStatTrak": 6324,
-  "m_iItemIDHigh": 464,
-  "m_szCustomName": 760,
   "m_pWeaponServices": 4848,
   "m_hActiveWeapon": 96,
-  "m_hOwnerEntity": 1312,
   "m_Item": 80,
   "m_pClippingWeapon": 0,
   "m_AttributeManager": 4752,
@@ -53,5 +46,7 @@
   "m_flDefuseCountDown": 4824,
   "m_flC4Blow": 4792,
   "m_bBeingDefused": 4804,
-  "m_bBombTicking": 4744
+  "m_bBombTicking": 4744,
+  "m_pBulletServices": 5488,
+  "m_totalHitsOnServer": 72
 }

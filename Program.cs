@@ -2,6 +2,7 @@ using CS2Cheat.Data.Game;
 using CS2Cheat.Graphics;
 using CS2Cheat.Utils;
 using System.Diagnostics;
+using System.IO;
 
 namespace CS2Cheat;
 

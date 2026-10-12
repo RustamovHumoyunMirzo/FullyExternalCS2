@@ -313,8 +313,14 @@ public class AimBot : ThreadedServiceBase
         }
 
         var rectangle = GameProcess?.WindowRectangleClient ?? System.Drawing.Rectangle.Empty;
+        if (rectangle.Width <= 0 || rectangle.Height <= 0)
+        {
+            return false;
+        }
+
         var transformed = GameData.Player.MatrixViewProjectionViewport.Transform(bonePos);
-        if (transformed.Z >= 1 ||
+        if (!float.IsFinite(transformed.X) || !float.IsFinite(transformed.Y) ||
+            !float.IsFinite(transformed.Z) || transformed.Z <= 0 || transformed.Z >= 1 ||
             transformed.X < 0 || transformed.Y < 0 ||
             transformed.X > rectangle.Width || transformed.Y > rectangle.Height)
         {

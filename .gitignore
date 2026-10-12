@@ -6,3 +6,4 @@
 /bin
 .claude
 .agents
+config.json

@@ -61,6 +61,8 @@ public class Entity : EntityBase
 
     public override bool Update(GameProcess gameProcess)
     {
+        _spottedByMask = 0;
+        IsSpotted = false;
         if (!base.Update(gameProcess)) return false;
 
         var sceneNode = gameProcess.Process?.Read<IntPtr>(AddressBase + Offsets.m_pGameSceneNode) ?? IntPtr.Zero;
@@ -109,10 +111,7 @@ public class Entity : EntityBase
             return false;
         }
 
-        var previousBit = playerId > 0 ? 1UL << (playerId - 1) : 0UL;
-        var zeroBasedBit = 1UL << playerId;
-        var oneBasedBit = playerId < 63 ? 1UL << (playerId + 1) : 0UL;
-        return (_spottedByMask & (previousBit | zeroBasedBit | oneBasedBit)) != 0;
+        return (_spottedByMask & (1UL << playerId)) != 0;
     }
 
 }

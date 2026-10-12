@@ -6,6 +6,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <UseWindowsForms>true</UseWindowsForms>
+        <UseWPF>true</UseWPF>
         <LangVersion>latest</LangVersion>
         <Platforms>AnyCPU;x64;x86</Platforms>
         <ApplicationIcon>assets\logo.ico</ApplicationIcon>
