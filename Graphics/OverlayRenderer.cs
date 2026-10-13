@@ -102,6 +102,7 @@ public class OverlayRenderer : Overlay
         if (mkd && !_menuKeyWasDown)
         {
             _showMenu = !_showMenu;
+            SetMenuKeyboardFocus(_showMenu);
             if (_showMenu)
             {
                 _menuPositionInitialized = false;
@@ -131,6 +132,21 @@ public class OverlayRenderer : Overlay
         RenderVisuals(dl);
         RenderHitMarker(dl);
         dl.AddText(new Vector2(5, 5), Colors.White, $"{ImGui.GetIO().Framerate:0} FPS");
+    }
+
+    private void SetMenuKeyboardFocus(bool enabled)
+    {
+        var handle = window.Handle;
+        var style = User32.GetWindowLong(handle, User32.GWL_EXSTYLE);
+        var updated = enabled
+            ? style & ~User32.WS_EX_NOACTIVATE
+            : style | User32.WS_EX_NOACTIVATE;
+        User32.SetWindowLong(handle, User32.GWL_EXSTYLE, updated);
+
+        if (enabled)
+            User32.SetForegroundWindow(handle);
+        else if (_gameProcess.WindowHwnd != IntPtr.Zero)
+            User32.SetForegroundWindow(_gameProcess.WindowHwnd);
     }
 
     void ApplyStyle()
@@ -477,6 +493,7 @@ public class OverlayRenderer : Overlay
     {
         SectionHeader("Local Weapon Cosmetics");
         ImGui.TextColored(ColTextDim, "Fallback cosmetics apply to the matching active weapon only.");
+        ImGui.TextColored(ColTextDim, $"Status: {_skinChanger.Status}");
         ImGui.SetNextItemWidth(220);
         ImGui.Combo("Weapon", ref _newSkinChoice, SkinWeaponNames, SkinWeaponNames.Length);
         ImGui.SameLine();

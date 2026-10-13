@@ -11,6 +11,8 @@ public sealed class SkinChanger : ThreadedServiceBase
     private readonly GameData _gameData;
     private SkinState? _activeState;
     private bool _reportedUnavailable;
+    private string _status = "Waiting for CS2";
+    public string Status => _status;
 
     private sealed record SkinState(
         IntPtr Weapon,
@@ -35,6 +37,7 @@ public sealed class SkinChanger : ThreadedServiceBase
     {
         if (!_gameProcess.IsValid || _gameProcess.Process == null)
         {
+            _status = "Waiting for CS2";
             RestoreActive();
             return;
         }
@@ -46,6 +49,7 @@ public sealed class SkinChanger : ThreadedServiceBase
                 Console.WriteLine("[SkinChanger] Fallback skin offsets unavailable. Refresh offsets online before using Skins.");
                 _reportedUnavailable = true;
             }
+            _status = "Skin offsets unavailable; refresh offsets";
             RestoreActive();
             return;
         }
@@ -58,6 +62,7 @@ public sealed class SkinChanger : ThreadedServiceBase
 
         if (weapon == IntPtr.Zero || profile == null)
         {
+            _status = weapon == IntPtr.Zero ? "No active weapon" : "No enabled profile for active weapon";
             RestoreActive();
             return;
         }
@@ -65,22 +70,6 @@ public sealed class SkinChanger : ThreadedServiceBase
         try
         {
             var process = _gameProcess.Process;
-            var controller = player?.ControllerAddress ?? IntPtr.Zero;
-            if (controller == IntPtr.Zero || process.Read<ulong>(controller + Offsets.m_steamID) == 0)
-            {
-                RestoreActive();
-                return;
-            }
-
-            var ownerHigh = process.Read<uint>(weapon + Offsets.m_OriginalOwnerXuidHigh);
-            var ownerLow = process.Read<uint>(weapon + Offsets.m_OriginalOwnerXuidLow);
-            var ownerXuid = ((ulong)ownerHigh << 32) | ownerLow;
-            if (ownerXuid != process.Read<ulong>(controller + Offsets.m_steamID))
-            {
-                RestoreActive();
-                return;
-            }
-
             var itemView = weapon + Offsets.m_AttributeManager + Offsets.m_Item;
             if (_activeState == null || _activeState.Weapon != weapon || _activeState.ItemView != itemView)
             {
@@ -104,10 +93,13 @@ public sealed class SkinChanger : ThreadedServiceBase
             WriteIfChanged(itemView + Offsets.m_iEntityQuality,
                 profile.StatTrakEnabled ? 9 : _activeState.Quality);
             WriteIfChanged(itemView + Offsets.m_iItemIDHigh, -1);
+            _status = $"Applied {((WeaponIndexes)definitionIndex)} | kit {profile.PaintKit}" +
+                      (profile.StatTrakEnabled ? $" | StatTrak {profile.StatTrakCount}" : string.Empty);
         }
         catch (Exception ex)
         {
             Console.WriteLine($"[SkinChanger] Could not apply local fallback cosmetics: {ex.Message}");
+            _status = $"Write failed: {ex.Message}";
             RestoreActive();
         }
     }
@@ -115,8 +107,7 @@ public sealed class SkinChanger : ThreadedServiceBase
     private static bool OffsetsAvailable() =>
         Offsets.m_AttributeManager > 0 && Offsets.m_Item > 0 && Offsets.m_iItemDefinitionIndex > 0 &&
         Offsets.m_nFallbackPaintKit > 0 && Offsets.m_nFallbackSeed > 0 && Offsets.m_flFallbackWear > 0 &&
-        Offsets.m_nFallbackStatTrak > 0 && Offsets.m_iEntityQuality > 0 && Offsets.m_iItemIDHigh > 0 &&
-        Offsets.m_OriginalOwnerXuidHigh > 0 && Offsets.m_OriginalOwnerXuidLow > 0 && Offsets.m_steamID > 0;
+        Offsets.m_nFallbackStatTrak > 0 && Offsets.m_iEntityQuality > 0 && Offsets.m_iItemIDHigh > 0;
 
     private void WriteIfChanged<T>(IntPtr address, T value) where T : unmanaged
     {
