@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CS2Cheat.Core.Data;
 using Keys = Process.NET.Native.Types.Keys;
 
 namespace CS2Cheat.Utils;
@@ -26,6 +27,7 @@ public class ConfigManager
     public bool HitMarker { get; set; }
     public bool HitSound { get; set; }
     public bool HitFeedbackTeamCheck { get; set; } = true;
+    public List<SkinConfigEntry> SkinConfigs { get; set; } = new();
 
     public bool AimBot { get; set; }
     public bool AimOnlyVisible { get; set; }
@@ -172,6 +174,18 @@ public class ConfigManager
 
     private static void SanitizeKeys(ConfigManager config)
     {
+        config.SkinConfigs ??= new List<SkinConfigEntry>();
+        config.SkinConfigs = config.SkinConfigs
+            .Where(entry => entry != null && entry.WeaponDefinitionIndex > 0)
+            .Take(64)
+            .ToList();
+        foreach (var entry in config.SkinConfigs)
+        {
+            entry.PaintKit = Math.Clamp(entry.PaintKit, 0, 1_000_000);
+            entry.Seed = Math.Clamp(entry.Seed, 0, 1000);
+            entry.Wear = float.IsFinite(entry.Wear) ? Math.Clamp(entry.Wear, 0.0001f, 1f) : 0.0001f;
+            entry.StatTrakCount = Math.Clamp(entry.StatTrakCount, 0, 9_999_999);
+        }
         config.GlowTColor = SanitizeColor(config.GlowTColor, [1f, 1f, 0f, 1f]);
         config.GlowCtColor = SanitizeColor(config.GlowCtColor, [0f, 0f, 1f, 1f]);
         var defaults = Default();

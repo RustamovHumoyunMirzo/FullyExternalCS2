@@ -19,6 +19,8 @@ public class OverlayRenderer : Overlay
     private bool _showMenu, _menuKeyWasDown, _styleApplied;
     private bool _menuPositionInitialized, _menuPositionDirty;
     private int _activeTab;
+    private int _newSkinChoice;
+    private int _selectedSkinIndex = -1;
     private string? _waitingForBind;
     private readonly BombTimer _bombTimer;
     private readonly VoteTeller _voteTeller;
@@ -27,6 +29,7 @@ public class OverlayRenderer : Overlay
     private readonly AntiFlash _antiFlash;
     private readonly RadarHack _radarHack;
     private readonly PlayerGlow _playerGlow;
+    private readonly SkinChanger _skinChanger;
     private readonly HitSoundPlayer _hitSoundPlayer;
     private bool _glowKeyWasDown;
     private int _lastHitSequence = -1;
@@ -45,7 +48,11 @@ public class OverlayRenderer : Overlay
     static readonly Vector4 ColItemActive = new(0.12f, 0.13f, 0.17f, 1f);
     static readonly Vector4 ColBorder = new(0.18f, 0.20f, 0.25f, 0.5f);
 
-    static readonly string[] TabNames = { "\u2022 Aimbot", "\u2022 Visuals", "\u2022 Misc", "\u2022 Config" };
+    static readonly string[] TabNames = { "\u2022 Aimbot", "\u2022 Visuals", "\u2022 Misc", "\u2022 Skins", "\u2022 Config" };
+    private static readonly WeaponIndexes[] SkinWeaponOptions = Enum.GetValues<WeaponIndexes>()
+        .Distinct().Where(IsSkinWeapon).OrderBy(value => (int)value).ToArray();
+    private static readonly string[] SkinWeaponNames = SkinWeaponOptions.Select(value => value.ToString()).ToArray();
+    private static readonly string[] WearStates = { "Factory New", "Minimal Wear", "Field-Tested", "Well-Worn", "Battle-Scarred" };
 
     public OverlayRenderer(GameProcess gp, GameData gd) : base(true)
     {
@@ -58,6 +65,7 @@ public class OverlayRenderer : Overlay
         _antiFlash = new AntiFlash(gp, gd);
         _radarHack = new RadarHack(gp, gd);
         _playerGlow = new PlayerGlow(gp, gd);
+        _skinChanger = new SkinChanger(gp, gd);
         _hitSoundPlayer = new HitSoundPlayer(Path.Combine(AppContext.BaseDirectory, "assets", "hitsound.mp3"));
     }
 
@@ -207,7 +215,8 @@ public class OverlayRenderer : Overlay
             case 0: TabAimbot(); break;
             case 1: TabVisuals(); break;
             case 2: TabMisc(); break;
-            case 3: TabConfig(); break;
+            case 3: TabSkins(); break;
+            case 4: TabConfig(); break;
         }
 
         ImGui.EndChild();
@@ -456,6 +465,126 @@ public class OverlayRenderer : Overlay
         ImGui.TextColored(ColTextDim, $"Game: {(_gameProcess.IsGameForeground ? "Active" : "Background")}");
     }
 
+    private static bool IsSkinWeapon(WeaponIndexes weapon)
+    {
+        var id = (int)weapon;
+        return id is 1 or 2 or 3 or 4 or 7 or 8 or 9 or 10 or 11 or 13 or 14 or 16 or 17 or 19 or
+            23 or 24 or 25 or 26 or 27 or 28 or 29 or 30 or 32 or 33 or 34 or 35 or 36 or 38 or 39 or
+            40 or 42 or 59 or 60 or 61 or 63 or 64 || id is >= 500 and < 600;
+    }
+
+    private void TabSkins()
+    {
+        SectionHeader("Local Weapon Cosmetics");
+        ImGui.TextColored(ColTextDim, "Fallback cosmetics apply to the matching active weapon only.");
+        ImGui.SetNextItemWidth(220);
+        ImGui.Combo("Weapon", ref _newSkinChoice, SkinWeaponNames, SkinWeaponNames.Length);
+        ImGui.SameLine();
+        if (ImGui.Button("Add"))
+        {
+            var definitionIndex = (int)SkinWeaponOptions[_newSkinChoice];
+            if (!_config.SkinConfigs.Any(entry => entry.WeaponDefinitionIndex == definitionIndex))
+            {
+                _config.SkinConfigs.Add(new SkinConfigEntry { WeaponDefinitionIndex = definitionIndex });
+                _selectedSkinIndex = _config.SkinConfigs.Count - 1;
+                SaveSkinConfig();
+            }
+        }
+
+        ImGui.Spacing();
+        ImGui.BeginChild("##skinProfiles", new Vector2(0, 92), ImGuiChildFlags.Borders);
+        for (var i = 0; i < _config.SkinConfigs.Count; i++)
+        {
+            var entry = _config.SkinConfigs[i];
+            var weapon = Enum.IsDefined(typeof(WeaponIndexes), entry.WeaponDefinitionIndex)
+                ? ((WeaponIndexes)entry.WeaponDefinitionIndex).ToString()
+                : $"Item {entry.WeaponDefinitionIndex}";
+            if (ImGui.Selectable($"{weapon}  |  paint {entry.PaintKit}##skin{i}", _selectedSkinIndex == i))
+                _selectedSkinIndex = i;
+        }
+        ImGui.EndChild();
+
+        if (_selectedSkinIndex < 0 || _selectedSkinIndex >= _config.SkinConfigs.Count) return;
+        var selected = _config.SkinConfigs[_selectedSkinIndex];
+        ImGui.Spacing();
+        ImGui.Text(selected.WeaponDefinitionIndex.ToString());
+        ImGui.SameLine();
+        var enabled = selected.Enabled;
+        if (Toggle("Apply", ref enabled))
+        {
+            selected.Enabled = enabled;
+            SaveSkinConfig();
+        }
+        ImGui.SameLine();
+        if (ImGui.Button("Remove"))
+        {
+            _config.SkinConfigs.RemoveAt(_selectedSkinIndex);
+            _selectedSkinIndex = Math.Min(_selectedSkinIndex, _config.SkinConfigs.Count - 1);
+            SaveSkinConfig();
+            return;
+        }
+
+        var paintKit = selected.PaintKit;
+        if (ImGui.InputInt("Paint Kit ID", ref paintKit))
+        {
+            selected.PaintKit = Math.Clamp(paintKit, 0, 1_000_000);
+            SaveSkinConfig();
+        }
+        var seed = selected.Seed;
+        if (ImGui.InputInt("Pattern / Seed", ref seed))
+        {
+            selected.Seed = Math.Clamp(seed, 0, 1000);
+            SaveSkinConfig();
+        }
+        var wearState = selected.Wear switch
+        {
+            < 0.07f => 0,
+            < 0.15f => 1,
+            < 0.38f => 2,
+            < 0.45f => 3,
+            _ => 4
+        };
+        if (ImGui.Combo("Condition", ref wearState, WearStates, WearStates.Length))
+        {
+            selected.Wear = wearState switch
+            {
+                0 => 0.01f,
+                1 => 0.10f,
+                2 => 0.25f,
+                3 => 0.42f,
+                _ => 0.70f
+            };
+            SaveSkinConfig();
+        }
+        var wear = selected.Wear;
+        if (ImGui.SliderFloat("Wear", ref wear, 0.0001f, 1f, "%.4f"))
+        {
+            selected.Wear = wear;
+            SaveSkinConfig();
+        }
+        var statTrak = selected.StatTrakEnabled;
+        if (Toggle("StatTrak", ref statTrak))
+        {
+            selected.StatTrakEnabled = statTrak;
+            SaveSkinConfig();
+        }
+        if (selected.StatTrakEnabled)
+        {
+            var count = selected.StatTrakCount;
+            if (ImGui.InputInt("StatTrak Count", ref count))
+            {
+                selected.StatTrakCount = Math.Clamp(count, 0, 9_999_999);
+                SaveSkinConfig();
+            }
+        }
+    }
+
+    private void SaveSkinConfig()
+    {
+        ConfigManager.UpdateCache(_config);
+        ConfigManager.Save(_config);
+    }
+
     void SectionHeader(string text)
     {
         ImGui.TextColored(ColAccent, text.ToUpper());
@@ -637,8 +766,8 @@ public class OverlayRenderer : Overlay
         drawList.AddLine(center + new Vector2(outer, outer), center + new Vector2(inner, inner), color, 2f);
     }
 
-    public void StartFeatures() { _bombTimer.Start(); _voteTeller.Start(); _triggerBot.Start(); _aimBot.Start(); _antiFlash.Start(); _radarHack.Start(); _playerGlow.Start(); }
-    public void StopFeatures() { _bombTimer.Dispose(); _voteTeller.Dispose(); _triggerBot.Dispose(); _aimBot.Dispose(); _antiFlash.Dispose(); _radarHack.Dispose(); _playerGlow.Dispose(); _hitSoundPlayer.Dispose(); }
+    public void StartFeatures() { _bombTimer.Start(); _voteTeller.Start(); _triggerBot.Start(); _aimBot.Start(); _antiFlash.Start(); _radarHack.Start(); _playerGlow.Start(); _skinChanger.Start(); }
+    public void StopFeatures() { _bombTimer.Dispose(); _voteTeller.Dispose(); _triggerBot.Dispose(); _aimBot.Dispose(); _antiFlash.Dispose(); _radarHack.Dispose(); _playerGlow.Dispose(); _skinChanger.Dispose(); _hitSoundPlayer.Dispose(); }
 
     public static uint ToColor(byte r, byte g, byte b, byte a = 255) =>
         ImGui.ColorConvertFloat4ToU32(new Vector4(r/255f, g/255f, b/255f, a/255f));

@@ -9,6 +9,7 @@ public abstract class EntityBase
 {
     protected IntPtr EntityList { get; private set; }
     protected IntPtr ControllerBase { get; private set; }
+    public IntPtr ControllerAddress => ControllerBase;
     public IntPtr AddressBase { get; private set; }
 
     private byte LifeState { get; set; } = byte.MaxValue;
@@ -18,6 +19,7 @@ public abstract class EntityBase
     public int ShotsFired { get; private set; }
 
     private IntPtr CurrentWeapon { get; set; }
+    public IntPtr CurrentWeaponAddress => CurrentWeapon;
     public string CurrentWeaponName { get; private set; } = null!;
 
     public short WeaponIndex { get; private set; }

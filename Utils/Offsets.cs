@@ -54,6 +54,15 @@ public abstract class Offsets
     public static int m_pClippingWeapon;
     public static int m_AttributeManager;
     public static int m_iItemDefinitionIndex;
+    public static int m_flFallbackWear;
+    public static int m_nFallbackPaintKit;
+    public static int m_nFallbackSeed;
+    public static int m_nFallbackStatTrak;
+    public static int m_iEntityQuality;
+    public static int m_iItemIDHigh;
+    public static int m_OriginalOwnerXuidHigh;
+    public static int m_OriginalOwnerXuidLow;
+    public static int m_steamID;
     public static int m_bIsScoped;
     public static int m_flFlashDuration;
     public static int m_iszPlayerName;
@@ -177,6 +186,15 @@ public abstract class Offsets
                                     throw new InvalidOperationException("Missing C_CSPlayerPawn.m_pBulletServices.");
         data["m_totalHitsOnServer"] = classes["CCSPlayer_BulletServices"]?["fields"]?["m_totalHitsOnServer"]?.Value<int>() ??
                                       throw new InvalidOperationException("Missing CCSPlayer_BulletServices.m_totalHitsOnServer.");
+        AddOptionalField(data, classes, "C_EconEntity", "m_flFallbackWear");
+        AddOptionalField(data, classes, "C_EconEntity", "m_nFallbackPaintKit");
+        AddOptionalField(data, classes, "C_EconEntity", "m_nFallbackSeed");
+        AddOptionalField(data, classes, "C_EconEntity", "m_nFallbackStatTrak");
+        AddOptionalField(data, classes, "C_EconItemView", "m_iEntityQuality");
+        AddOptionalField(data, classes, "C_EconItemView", "m_iItemIDHigh");
+        AddOptionalField(data, classes, "C_EconEntity", "m_OriginalOwnerXuidHigh");
+        AddOptionalField(data, classes, "C_EconEntity", "m_OriginalOwnerXuidLow");
+        AddOptionalField(data, classes, "CBasePlayerController", "m_steamID");
         ValidateOffsetMap(data);
         var optionalMissing = new[] { "m_aimPunchAngle", "m_aimPunchCache", "m_pClippingWeapon" }
             .Where(key => data.GetValueOrDefault(key) == 0).ToArray();
@@ -205,6 +223,12 @@ public abstract class Offsets
     private static async Task<string> FetchJson(string url)
     {
         return await HttpClientInstance.GetStringAsync(url);
+    }
+
+    private static void AddOptionalField(Dictionary<string, int> data, JToken classes, string className, string fieldName)
+    {
+        var value = classes[className]?["fields"]?[fieldName]?.Value<int>();
+        if (value.HasValue) data[fieldName] = value.Value;
     }
 
     private static Dictionary<string, int> BuildOffsetMap(OffsetsDTO sourceDataDw, ClientDllDTO sourceDataClient)
@@ -345,6 +369,15 @@ public abstract class Offsets
         m_pClippingWeapon = data["m_pClippingWeapon"];
         m_AttributeManager = data["m_AttributeManager"];
         m_iItemDefinitionIndex = data["m_iItemDefinitionIndex"];
+        m_flFallbackWear = data.GetValueOrDefault("m_flFallbackWear");
+        m_nFallbackPaintKit = data.GetValueOrDefault("m_nFallbackPaintKit");
+        m_nFallbackSeed = data.GetValueOrDefault("m_nFallbackSeed");
+        m_nFallbackStatTrak = data.GetValueOrDefault("m_nFallbackStatTrak");
+        m_iEntityQuality = data.GetValueOrDefault("m_iEntityQuality");
+        m_iItemIDHigh = data.GetValueOrDefault("m_iItemIDHigh");
+        m_OriginalOwnerXuidHigh = data.GetValueOrDefault("m_OriginalOwnerXuidHigh");
+        m_OriginalOwnerXuidLow = data.GetValueOrDefault("m_OriginalOwnerXuidLow");
+        m_steamID = data.GetValueOrDefault("m_steamID");
         m_bIsScoped = data["m_bIsScoped"];
         m_flFlashDuration = data["m_flFlashDuration"];
         m_iszPlayerName = data["m_iszPlayerName"];
